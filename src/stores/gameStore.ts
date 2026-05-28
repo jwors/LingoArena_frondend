@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, GameStats, OpponentStatus } from '../types';
+import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus } from '../types';
 
 interface GameState {
   roomId: string | null;
