@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus } from '../types';
+import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus, GameMode } from '../types';
 
 interface GameState {
   roomId: string | null;
@@ -14,6 +14,8 @@ interface GameState {
   opponentStatus: OpponentStatus;
   hasSubmitted: boolean;
   gameEndData: GameEndData | null;
+  gameMode: GameMode;
+  currentTurnPlayerId: string | null;
 
   setRoom: (roomId: string, players: Player[], wordBook: WordBook) => void;
   startGame: () => void;
@@ -24,6 +26,8 @@ interface GameState {
   setOpponentStatus: (status: OpponentStatus) => void;
   endGame: (data: GameEndData) => void;
   submitAnswer: () => void;
+  setGameMode: (mode: GameMode) => void;
+  setTurn: (playerId: string) => void;
   reset: () => void;
 }
 
@@ -40,6 +44,8 @@ const initialState = {
   opponentStatus: null,
   hasSubmitted: false,
   gameEndData: null,
+  gameMode: 'rush' as GameMode,
+  currentTurnPlayerId: null,
 };
 
 export const useGameStore = create<GameState>()((set) => ({
@@ -57,5 +63,7 @@ export const useGameStore = create<GameState>()((set) => ({
   setOpponentStatus: (status) => set({ opponentStatus: status }),
   endGame: (data) => set({ status: 'finished', gameEndData: data }),
   submitAnswer: () => set({ hasSubmitted: true }),
+  setGameMode: (mode) => set({ gameMode: mode }),
+  setTurn: (playerId) => set({ currentTurnPlayerId: playerId }),
   reset: () => set(initialState),
 }));
