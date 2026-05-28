@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
@@ -15,7 +15,9 @@ export default function LoginPage() {
   const register = useAuthStore((s) => s.register);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  if (isAuthenticated()) navigate('/lobby', { replace: true });
+  useEffect(() => {
+    if (isAuthenticated()) navigate('/lobby', { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

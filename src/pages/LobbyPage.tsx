@@ -7,11 +7,11 @@ import { showToast } from '../components/shared/Toast';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
   useWebSocket();
 
-  if (!isAuthenticated()) { navigate('/login', { replace: true }); return null; }
+  if (!token) { navigate('/login', { replace: true }); return null; }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
