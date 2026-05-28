@@ -36,9 +36,11 @@ export default function GameRoomPage() {
 
   useEffect(() => {
     if (!token || !roomId) return;
-    connect(token);
-    const t = setTimeout(() => { send('room:join', { roomId }); send('player:ready', { roomId }); }, 500);
-    return () => { clearTimeout(t); disconnect(); reset(); };
+    connect(token, () => {
+      send('room:join', { roomId });
+      send('player:ready', { roomId });
+    });
+    return () => { disconnect(); reset(); };
   }, [token, roomId]);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function GameRoomPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
       <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
-        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myNickname={user?.nickname || ''} />
+        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myId={user?.id || ''} />
         <ScoreBoard myScore={myScore} opponentScore={oppScore} />
         {gameStatus === 'waiting' && (
           <div className="text-center py-12"><LoadingSpinner /><p className="text-gray-500 mt-4">等待对手加入...</p></div>

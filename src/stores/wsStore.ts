@@ -7,7 +7,7 @@ interface WSState {
   ws: WebSocket | null;
   connected: boolean;
   _intentionalDisconnect: boolean;
-  connect: (token: string) => void;
+  connect: (token: string, onOpen?: () => void) => void;
   disconnect: () => void;
   send: (event: string, data: Record<string, unknown>) => void;
 }
@@ -19,7 +19,7 @@ export const useWSStore = create<WSState>()((set, get) => ({
   connected: false,
   _intentionalDisconnect: false,
 
-  connect: (token: string) => {
+  connect: (token: string, onOpen?: () => void) => {
     // Clear any pending reconnect timer before creating a new connection
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -34,7 +34,10 @@ export const useWSStore = create<WSState>()((set, get) => ({
     // to avoid leaking it to proxy servers, server logs, and browser history
     const ws = new WebSocket(wsEndpoint, ['Bearer', token]);
 
-    ws.onopen = () => set({ connected: true, _intentionalDisconnect: false });
+    ws.onopen = () => {
+      set({ connected: true, _intentionalDisconnect: false });
+      onOpen?.();
+    };
 
     ws.onmessage = (event) => {
       try {

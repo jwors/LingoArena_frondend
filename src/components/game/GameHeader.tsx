@@ -8,14 +8,14 @@ interface Props {
   opponentStatus: 'typing' | 'submitted' | null;
   gameMode: GameMode;
   currentTurnPlayerId: string | null;
-  myNickname: string;
+  myId: string;
 }
 
-export function GameHeader({ opponent, wordBook, timeLeft, opponentStatus, gameMode, currentTurnPlayerId, myNickname }: Props) {
+export function GameHeader({ opponent, wordBook, timeLeft, opponentStatus, gameMode, currentTurnPlayerId, myId }: Props) {
   const timeDisplay = useTimer(timeLeft);
   const opponentNickname = opponent?.nickname || '对手';
   const turnLabel = gameMode === 'turn'
-    ? (currentTurnPlayerId === myNickname ? '你的回合' : `${opponentNickname}的回合`)
+    ? (currentTurnPlayerId === myId ? '你的回合' : `${opponentNickname}的回合`)
     : null;
 
   return (
