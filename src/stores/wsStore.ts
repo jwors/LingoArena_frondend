@@ -6,6 +6,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || '/ws';
 interface WSState {
   ws: WebSocket | null;
   connected: boolean;
+  _intentionalDisconnect: boolean;
   connect: (token: string) => void;
   disconnect: () => void;
   send: (event: string, data: Record<string, unknown>) => void;
@@ -16,14 +17,24 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 export const useWSStore = create<WSState>()((set, get) => ({
   ws: null,
   connected: false,
+  _intentionalDisconnect: false,
 
   connect: (token: string) => {
+    // Clear any pending reconnect timer before creating a new connection
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsEndpoint = WS_URL.startsWith('ws') ? WS_URL : `${protocol}//${host}${WS_URL}`;
-    const ws = new WebSocket(`${wsEndpoint}?token=${token}`);
 
-    ws.onopen = () => set({ connected: true });
+    // Pass token via WebSocket subprotocol instead of query parameter
+    // to avoid leaking it to proxy servers, server logs, and browser history
+    const ws = new WebSocket(wsEndpoint, ['Bearer', token]);
+
+    ws.onopen = () => set({ connected: true, _intentionalDisconnect: false });
 
     ws.onmessage = (event) => {
       try {
@@ -45,6 +56,11 @@ export const useWSStore = create<WSState>()((set, get) => ({
 
     ws.onclose = () => {
       set({ connected: false, ws: null });
+
+      // Only auto-reconnect if the disconnect was NOT intentional
+      const { _intentionalDisconnect } = get();
+      if (_intentionalDisconnect) return;
+
       reconnectTimer = setTimeout(() => {
         const t = localStorage.getItem('token');
         if (t) get().connect(t);
@@ -56,8 +72,17 @@ export const useWSStore = create<WSState>()((set, get) => ({
 
   disconnect: () => {
     const { ws } = get();
+
+    // Mark disconnect as intentional BEFORE closing the socket
+    set({ _intentionalDisconnect: true });
+
+    // Clear reconnect timer BEFORE closing so onclose handler won't schedule a reconnect
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
     if (ws) ws.close();
-    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     set({ ws: null, connected: false });
   },
 
