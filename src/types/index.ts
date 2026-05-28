@@ -43,6 +43,13 @@ export interface GameEndData {
 export type GameStatus = 'idle' | 'waiting' | 'playing' | 'finished';
 export type OpponentStatus = 'typing' | 'submitted' | null;
 
+export type GameMode = 'rush' | 'turn';
+
+export interface TurnInfo {
+  currentPlayerId: string;
+  round: number;
+}
+
 export const WORD_BOOKS: WordBook[] = [
   { name: 'cet4', label: 'CET-4', emoji: '📘', color: 'blue' },
   { name: 'cet6', label: 'CET-6', emoji: '📕', color: 'red' },
