@@ -1,16 +1,29 @@
 import { useState, useRef } from 'react';
 import { useWSStore } from '../../stores/wsStore';
 import { useGameStore } from '../../stores/gameStore';
+import { useAuthStore } from '../../stores/authStore';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import type { GameMode } from '../../types';
 
-interface Props { roomId: string; }
+interface Props { roomId: string; gameMode: GameMode; }
 
-export function AnswerForm({ roomId }: Props) {
+export function AnswerForm({ roomId, gameMode }: Props) {
   const [answer, setAnswer] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const hasSubmitted = useGameStore((s) => s.hasSubmitted);
   const submitAnswer = useGameStore((s) => s.submitAnswer);
   const send = useWSStore((s) => s.send);
+  const currentTurnPlayerId = useGameStore((s) => s.currentTurnPlayerId);
+  const userId = useAuthStore((s) => s.user?.id);
+
+  // Turn-based: not this player's turn
+  if (gameMode === 'turn' && currentTurnPlayerId && currentTurnPlayerId !== userId) {
+    return (
+      <div className="text-center py-4 text-gray-400">
+        等待对手答题...
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

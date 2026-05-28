@@ -14,6 +14,7 @@ export default function GameRoomPage() {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const gameStatus = useGameStore((s) => s.status);
   const gameEndData = useGameStore((s) => s.gameEndData);
@@ -24,6 +25,8 @@ export default function GameRoomPage() {
   const wordBook = useGameStore((s) => s.wordBook);
   const result = useGameStore((s) => s.result);
   const opponentStatus = useGameStore((s) => s.opponentStatus);
+  const gameMode = useGameStore((s) => s.gameMode);
+  const currentTurnPlayerId = useGameStore((s) => s.currentTurnPlayerId);
   const reset = useGameStore((s) => s.reset);
   const connect = useWSStore((s) => s.connect);
   const disconnect = useWSStore((s) => s.disconnect);
@@ -44,14 +47,15 @@ export default function GameRoomPage() {
 
   if (!roomId) return <div className="p-8 text-center">无效的房间</div>;
 
-  const opponent = players.length > 1 ? players[1] : players[0] || null;
-  const myScore = 0;
+  const myId = user?.id || '';
+  const opponent = players.find((p) => p.id !== myId) || players[0] || null;
+  const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
       <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
-        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} />
+        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myNickname={user?.nickname || ''} />
         <ScoreBoard myScore={myScore} opponentScore={oppScore} />
         {gameStatus === 'waiting' && (
           <div className="text-center py-12"><LoadingSpinner /><p className="text-gray-500 mt-4">等待对手加入...</p></div>
@@ -60,7 +64,7 @@ export default function GameRoomPage() {
           <>
             <QuestionCard chinese={currentQuestion.chinese} round={currentQuestion.round} />
             <ResultFeedback result={result} />
-            <AnswerForm roomId={roomId} />
+            <AnswerForm roomId={roomId} gameMode={gameMode} />
           </>
         )}
         {gameStatus === 'playing' && !currentQuestion && (
