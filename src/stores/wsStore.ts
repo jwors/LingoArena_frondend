@@ -37,6 +37,7 @@ export const useWSStore = create<WSState>()((set, get) => ({
           case 'score:update': g.setScores(data.scores); break;
           case 'timer:tick': g.setTimeLeft(data.timeLeft); break;
           case 'opponent:status': g.setOpponentStatus(data.status); break;
+          case 'turn:start': g.setTurn(data.currentPlayerId); break;
           case 'game:end': g.endGame(data); break;
         }
       } catch (err) { console.error('[WS] parse error:', err); }
