@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from './components/shared/Toast';
 import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GameRoomPage from './pages/GameRoomPage';
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/results" element={<ResultsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <ToastContainer />
     </BrowserRouter>
   );
 }
