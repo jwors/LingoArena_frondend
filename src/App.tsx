@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GameRoomPage from './pages/GameRoomPage';
+import ResultsPage from './pages/ResultsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/lobby" element={<LobbyPage />} />
         <Route path="/room/:id" element={<GameRoomPage />} />
+        <Route path="/results" element={<ResultsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
