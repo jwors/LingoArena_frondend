@@ -49,7 +49,7 @@ export default function GameRoomPage() {
 
   if (!roomId) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
-  const myId = user?.id || '';
+  const myId = String(user?.id || '');
   const opponent = players.find((p) => p.id !== myId) || players[0] || null;
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
@@ -63,7 +63,7 @@ export default function GameRoomPage() {
       </div>
 
       <main className="max-w-xl mx-auto px-4 py-4 space-y-4 relative z-10 animate-fade-in">
-        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myId={user?.id || ''} />
+        <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myId={String(user?.id || '')} />
         <ScoreBoard myScore={myScore} opponentScore={oppScore} />
         {gameStatus === 'waiting' && (
           <div className="text-center py-12 animate-fade-in">

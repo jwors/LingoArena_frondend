@@ -27,7 +27,10 @@ export default function LoginPage() {
       if (isRegister) { await register(email, password, nickname); showToast('注册成功', 'success'); }
       else { await login(email, password); showToast('登录成功', 'success'); }
       navigate('/lobby');
-    } catch { showToast(isRegister ? '注册失败' : '登录失败', 'error'); }
+    } catch (error: unknown) {
+      const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast(msg || (isRegister ? '注册失败' : '登录失败'), 'error');
+    }
     finally { setLoading(false); }
   };
 

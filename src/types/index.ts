@@ -1,8 +1,6 @@
 export interface User {
-  id: string;
-  email: string;
+  id: number;
   nickname: string;
-  avatar?: string;
 }
 
 export interface Player {
@@ -26,6 +24,7 @@ export interface DisplayQuestion {
 export interface AnswerResult {
   correct: boolean;
   playerId: string;
+  answer?: string;
 }
 
 export interface GameStats {

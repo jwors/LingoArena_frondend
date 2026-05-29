@@ -5,6 +5,7 @@ import { useAuthStore } from '../authStore';
 vi.mock('../../api/auth', () => ({
   login: vi.fn(),
   register: vi.fn(),
+  logout: vi.fn(),
 }));
 
 describe('authStore', () => {
@@ -21,22 +22,23 @@ describe('authStore', () => {
   });
 
   it('should set token and user on successful login', async () => {
-    const mockUser = { id: '1', email: 'a@b.com', nickname: 'Test' };
+    const mockUser = { id: 1, nickname: 'Test' };
     (authApi.login as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: { token: 'tok', user: mockUser },
+      data: { accessToken: 'tok', refreshToken: 'rtok', user: mockUser },
     });
     await useAuthStore.getState().login('a@b.com', 'pw');
     const s = useAuthStore.getState();
     expect(s.token).toBe('tok');
+    expect(s.refreshToken).toBe('rtok');
     expect(s.user).toEqual(mockUser);
     expect(s.isAuthenticated()).toBe(true);
   });
 
-  it('should clear on logout', () => {
-    localStorage.setItem('token', 'x');
-    useAuthStore.setState({ token: 'x', user: { id: '1', email: 'a@b.com', nickname: 'x' } });
-    useAuthStore.getState().logout();
+  it('should clear on logout', async () => {
+    localStorage.setItem('auth_token', 'x');
+    useAuthStore.setState({ token: 'x', refreshToken: 'rx', user: { id: 1, nickname: 'x' } });
+    await useAuthStore.getState().logout();
     expect(useAuthStore.getState().token).toBeNull();
-    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('auth_token')).toBeNull();
   });
 });

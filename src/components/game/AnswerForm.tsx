@@ -17,7 +17,7 @@ export function AnswerForm({ roomId, gameMode }: Props) {
   const userId = useAuthStore((s) => s.user?.id);
 
   // Turn-based: not this player's turn
-  if (gameMode === 'turn' && currentTurnPlayerId && currentTurnPlayerId !== userId) {
+  if (gameMode === 'turn' && currentTurnPlayerId && currentTurnPlayerId !== String(userId)) {
     return (
       <div className="text-center py-6 bg-white/60 rounded-xl animate-fade-in">
         <div className="w-6 h-6 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin mx-auto mb-3" />
