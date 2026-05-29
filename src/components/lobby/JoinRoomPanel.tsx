@@ -21,17 +21,33 @@ export function JoinRoomPanel({ onJoined }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
-      <h3 className="text-lg font-semibold mb-4">加入房间</h3>
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">房间码</label>
-        <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={6}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-center text-lg tracking-widest font-mono" placeholder="ABC123" />
+    <div className="card animate-fade-in">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
+          <span className="text-lg">🚪</span>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">加入房间</h3>
+          <p className="text-sm text-gray-500">输入好友提供的房间码</p>
+        </div>
       </div>
-      <button onClick={handleJoin} disabled={loading || code.length < 4}
-        className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center">
-        {loading ? <LoadingSpinner /> : '加入房间'}
-      </button>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">房间码</label>
+          <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={6}
+            className="input-field text-center text-lg tracking-widest font-mono" placeholder="ABC123" />
+        </div>
+        <button onClick={handleJoin} disabled={loading || code.length < 4}
+          className="w-full bg-emerald-600 text-white py-2.5 rounded-xl
+                     hover:bg-emerald-700 hover:shadow-lg
+                     transition-all duration-200
+                     disabled:opacity-40 disabled:cursor-not-allowed
+                     flex items-center justify-center
+                     active:scale-[0.98]">
+          {loading ? <LoadingSpinner size="sm" /> : '加入房间'}
+        </button>
+      </div>
     </div>
   );
 }

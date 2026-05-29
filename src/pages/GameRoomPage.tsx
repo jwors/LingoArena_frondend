@@ -47,7 +47,7 @@ export default function GameRoomPage() {
     if (gameStatus === 'finished' && gameEndData) navigate('/results');
   }, [gameStatus, gameEndData, navigate]);
 
-  if (!roomId) return <div className="p-8 text-center">无效的房间</div>;
+  if (!roomId) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
   const myId = user?.id || '';
   const opponent = players.find((p) => p.id !== myId) || players[0] || null;
@@ -55,12 +55,21 @@ export default function GameRoomPage() {
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
-      <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
+    <div className="page-bg">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-violet-100/40 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-sky-100/40 rounded-full blur-3xl" />
+      </div>
+
+      <main className="max-w-xl mx-auto px-4 py-4 space-y-4 relative z-10 animate-fade-in">
         <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myId={user?.id || ''} />
         <ScoreBoard myScore={myScore} opponentScore={oppScore} />
         {gameStatus === 'waiting' && (
-          <div className="text-center py-12"><LoadingSpinner /><p className="text-gray-500 mt-4">等待对手加入...</p></div>
+          <div className="text-center py-12 animate-fade-in">
+            <LoadingSpinner />
+            <p className="text-gray-500 mt-4">等待对手加入...</p>
+          </div>
         )}
         {gameStatus === 'playing' && currentQuestion && (
           <>
@@ -70,7 +79,10 @@ export default function GameRoomPage() {
           </>
         )}
         {gameStatus === 'playing' && !currentQuestion && (
-          <div className="text-center py-12"><LoadingSpinner /><p className="text-gray-500 mt-4">等待下一题...</p></div>
+          <div className="text-center py-12 animate-fade-in">
+            <LoadingSpinner />
+            <p className="text-gray-500 mt-4">等待下一题...</p>
+          </div>
         )}
       </main>
     </div>

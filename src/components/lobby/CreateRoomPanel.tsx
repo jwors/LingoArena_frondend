@@ -24,40 +24,60 @@ export function CreateRoomPanel({ onCreated }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
-      <h3 className="text-lg font-semibold mb-4">创建房间</h3>
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">选择词库</label>
-        <WordBookSelector selected={selectedBook} onChange={(wb) => setSelectedBook(wb.name)} />
-      </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">游戏模式</label>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setGameMode('rush')}
-            className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors text-sm ${
-              gameMode === 'rush' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:border-gray-300'}`}>
-            <span className="text-xl">⚡</span>
-            <span className="font-medium">抢答制</span>
-            <span className="text-xs text-gray-400">先答对先得分</span>
-          </button>
-          <button type="button" onClick={() => setGameMode('turn')}
-            className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors text-sm ${
-              gameMode === 'turn' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:border-gray-300'}`}>
-            <span className="text-xl">🔄</span>
-            <span className="font-medium">回合制</span>
-            <span className="text-xs text-gray-400">轮流答题</span>
-          </button>
+    <div className="card animate-fade-in">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-sm">
+          <span className="text-lg">🏠</span>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">创建房间</h3>
+          <p className="text-sm text-gray-500">设置词库和模式，邀请好友来战</p>
         </div>
       </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">房间名称（可选）</label>
-        <input type="text" value={roomName} onChange={(e) => setRoomName(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="留空使用默认名称" />
+
+      <div className="space-y-4">
+        {/* Word book */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">选择词库</label>
+          <WordBookSelector selected={selectedBook} onChange={(wb) => setSelectedBook(wb.name)} />
+        </div>
+
+        {/* Game mode */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">游戏模式</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => setGameMode('rush')}
+              className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all duration-200 text-sm active:scale-[0.98] ${
+                gameMode === 'rush'
+                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+              <span className="text-xl">⚡</span>
+              <span className="font-medium">抢答制</span>
+              <span className="text-xs text-gray-400">先答对先得分</span>
+            </button>
+            <button type="button" onClick={() => setGameMode('turn')}
+              className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all duration-200 text-sm active:scale-[0.98] ${
+                gameMode === 'turn'
+                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+              <span className="text-xl">🔄</span>
+              <span className="font-medium">回合制</span>
+              <span className="text-xs text-gray-400">轮流答题</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Room name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">房间名称（可选）</label>
+          <input type="text" value={roomName} onChange={(e) => setRoomName(e.target.value)}
+            className="input-field" placeholder="留空使用默认名称" />
+        </div>
+
+        <button onClick={handleCreate} disabled={loading} className="btn-primary">
+          {loading ? <LoadingSpinner size="sm" /> : '创建房间'}
+        </button>
       </div>
-      <button onClick={handleCreate} disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center">
-        {loading ? <LoadingSpinner /> : '创建房间'}
-      </button>
     </div>
   );
 }

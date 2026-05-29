@@ -32,12 +32,24 @@ export default function ResultsPage() {
   const myName = user?.nickname || '你';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+    <div className="page-bg">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -right-32 w-96 h-96 bg-violet-100/40 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -left-32 w-96 h-96 bg-sky-100/40 rounded-full blur-3xl" />
+      </div>
+
+      <main className="max-w-xl mx-auto px-4 py-6 space-y-4 relative z-10">
         <WinnerBanner isWinner={isWinner} nickname={myName} />
-        <ScoreSummary myScore={myScore} opponentScore={oppScore} myNickname={myName} oppNickname={opponent.nickname} />
-        <StatsTable myNickname={myName} oppNickname={opponent.nickname} myStats={gameEndData.stats[myId]} oppStats={gameEndData.stats[opponent.id]} />
-        <PlayAgainButton />
+        <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <ScoreSummary myScore={myScore} opponentScore={oppScore} myNickname={myName} oppNickname={opponent.nickname} />
+        </div>
+        <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <StatsTable myNickname={myName} oppNickname={opponent.nickname} myStats={gameEndData.stats[myId]} oppStats={gameEndData.stats[opponent.id]} />
+        </div>
+        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <PlayAgainButton />
+        </div>
       </main>
     </div>
   );

@@ -19,21 +19,48 @@ export function GameHeader({ opponent, wordBook, timeLeft, opponentStatus, gameM
     : null;
 
   return (
-    <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-sm">
+    <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-xl p-3 shadow-sm">
+      {/* Opponent */}
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 ${
+          opponentStatus === 'typing'
+            ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-200 ring-offset-1'
+            : opponentStatus === 'submitted'
+            ? 'bg-emerald-100 text-emerald-700'
+            : 'bg-violet-100 text-violet-700'
+        }`}>
           {opponent?.nickname?.[0] || '?'}
         </div>
         <div>
-          <p className="text-sm font-medium">{opponentNickname}</p>
-          {opponentStatus && <p className="text-xs text-gray-400">{opponentStatus === 'typing' ? '正在输入...' : '已提交'}</p>}
+          <p className="text-sm font-medium text-gray-900">{opponentNickname}</p>
+          {opponentStatus && (
+            <p className={`text-xs ${
+              opponentStatus === 'typing' ? 'text-sky-500' : 'text-emerald-500'
+            }`}>
+              {opponentStatus === 'typing' ? '正在输入...' : '已提交'}
+            </p>
+          )}
         </div>
       </div>
-      <div className="flex flex-col items-center gap-1">
-        {wordBook && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-medium rounded-lg">{wordBook.emoji} {wordBook.label}</span>}
-        {turnLabel && <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{turnLabel}</span>}
+
+      {/* Center badges */}
+      <div className="flex flex-col items-center gap-1.5">
+        {wordBook && (
+          <span className="badge bg-violet-50 text-violet-700">
+            {wordBook.emoji} {wordBook.label}
+          </span>
+        )}
+        {turnLabel && (
+          <span className="badge bg-amber-50 text-amber-600">{turnLabel}</span>
+        )}
       </div>
-      <div className={`text-lg font-mono font-bold ${timeLeft <= 5 ? 'text-red-500' : 'text-gray-700'}`}>{timeDisplay}</div>
+
+      {/* Timer */}
+      <div className={`text-xl font-mono font-bold tabular-nums transition-colors duration-200 ${
+        timeLeft <= 5 ? 'text-rose-500 animate-pulse' : 'text-gray-700'
+      }`}>
+        {timeDisplay}
+      </div>
     </div>
   );
 }

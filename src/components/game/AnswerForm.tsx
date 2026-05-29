@@ -19,8 +19,9 @@ export function AnswerForm({ roomId, gameMode }: Props) {
   // Turn-based: not this player's turn
   if (gameMode === 'turn' && currentTurnPlayerId && currentTurnPlayerId !== userId) {
     return (
-      <div className="text-center py-4 text-gray-400">
-        等待对手答题...
+      <div className="text-center py-6 bg-white/60 rounded-xl animate-fade-in">
+        <div className="w-6 h-6 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">等待对手答题...</p>
       </div>
     );
   }
@@ -34,14 +35,14 @@ export function AnswerForm({ roomId, gameMode }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2 animate-slide-up">
       <input ref={inputRef} type="text" value={answer} onChange={(e) => setAnswer(e.target.value)}
         disabled={hasSubmitted} placeholder={hasSubmitted ? '已提交，等待结果...' : '输入英文答案'}
-        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-lg disabled:bg-gray-50 disabled:text-gray-400"
+        className="flex-1 input-field text-lg"
         autoComplete="off" autoFocus />
       <button type="submit" disabled={hasSubmitted || !answer.trim()}
-        className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 font-medium">
-        {hasSubmitted ? <LoadingSpinner /> : '提交'}
+        className="px-6 py-2.5 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed font-medium hover:shadow-lg active:scale-[0.98]">
+        {hasSubmitted ? <LoadingSpinner size="sm" /> : '提交'}
       </button>
     </form>
   );

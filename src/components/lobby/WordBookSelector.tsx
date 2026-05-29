@@ -5,11 +5,13 @@ interface Props { selected: string; onChange: (wb: WordBook) => void; }
 
 export function WordBookSelector({ selected, onChange }: Props) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-2.5">
       {WORD_BOOKS.map((wb) => (
         <button key={wb.name} type="button" onClick={() => onChange(wb)}
-          className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors text-sm ${
-            selected === wb.name ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:border-gray-300'}`}>
+          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 text-sm active:scale-[0.98] ${
+            selected === wb.name
+              ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
           <span className="text-xl">{wb.emoji}</span>
           <span className="font-medium">{wb.label}</span>
         </button>

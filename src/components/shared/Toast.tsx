@@ -26,9 +26,11 @@ export function ToastContainer() {
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
       {toasts.map((t) => (
         <div key={t.id}
-          className={`px-4 py-2 rounded-lg text-white text-sm shadow-lg cursor-pointer ${
-            t.type === 'success' ? 'bg-green-500' : t.type === 'error' ? 'bg-red-500' : 'bg-indigo-500'}`}
-          onClick={() => { _toasts = _toasts.filter((x) => x.id !== t.id); emit(); }}>
+          onClick={() => { _toasts = _toasts.filter((x) => x.id !== t.id); emit(); }}
+          className={`px-4 py-2.5 rounded-xl text-white text-sm shadow-lg cursor-pointer
+                     transition-all duration-200 animate-slide-down hover:shadow-xl ${
+            t.type === 'success' ? 'bg-emerald-500' : t.type === 'error' ? 'bg-rose-500' : 'bg-violet-500'}`}>
+          <span className="mr-1.5">{t.type === 'success' ? '✓' : t.type === 'error' ? '✗' : 'ℹ'}</span>
           {t.message}
         </div>
       ))}
