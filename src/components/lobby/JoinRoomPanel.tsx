@@ -13,9 +13,9 @@ export function JoinRoomPanel({ onJoined }: Props) {
     if (!code.trim()) { showToast('请输入房间码', 'error'); return; }
     setLoading(true);
     try {
-      const { data } = await joinRoom({ code: code.trim() });
+      const { data: { room } } = await joinRoom({ code: code.trim() });
       showToast('加入房间成功', 'success');
-      onJoined(data.id);
+      onJoined(String(room.id));
     } catch { showToast('加入房间失败，请检查房间码', 'error'); }
     finally { setLoading(false); }
   };

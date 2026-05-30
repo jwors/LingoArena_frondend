@@ -16,9 +16,9 @@ export function CreateRoomPanel({ onCreated }: Props) {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const { data } = await createRoom({ wordBook: selectedBook, name: roomName || undefined, mode: gameMode });
+      const { data: { room } } = await createRoom({ wordBook: selectedBook, name: roomName || undefined, mode: gameMode });
       showToast('房间创建成功', 'success');
-      onCreated(data.id);
+      onCreated(String(room.id));
     } catch { showToast('创建房间失败', 'error'); }
     finally { setLoading(false); }
   };

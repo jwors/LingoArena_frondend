@@ -4,7 +4,7 @@ import type { User } from '../types';
 
 interface AuthState {
   token: string | null;
-  refreshToken: string | null;
+  refresh_token: string | null;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, nickname: string) => Promise<void>;
@@ -17,32 +17,32 @@ const storedToken = localStorage.getItem('auth_token');
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   token: storedToken,
-  refreshToken: localStorage.getItem('auth_refresh_token'),
+  refresh_token: localStorage.getItem('auth_refresh_token'),
   user: storedToken ? (JSON.parse(localStorage.getItem('user') || 'null') as User | null) : null,
   isAuthenticated: () => !!get().token,
   login: async (email, password) => {
     const { data } = await loginApi({ email, password });
-    localStorage.setItem('auth_token', data.accessToken);
-    localStorage.setItem('auth_refresh_token', data.refreshToken);
+    localStorage.setItem('auth_token', data.access_token);
+    localStorage.setItem('auth_refresh_token', data.refresh_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    set({ token: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+    set({ token: data.access_token, refresh_token: data.refresh_token, user: data.user });
   },
   register: async (email, password, nickname) => {
     const { data } = await registerApi({ email, password, nickname });
-    localStorage.setItem('auth_token', data.accessToken);
-    localStorage.setItem('auth_refresh_token', data.refreshToken);
+    localStorage.setItem('auth_token', data.access_token);
+    localStorage.setItem('auth_refresh_token', data.refresh_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    set({ token: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+    set({ token: data.access_token, refresh_token: data.refresh_token, user: data.user });
   },
   logout: async () => {
-    const refreshTok = get().refreshToken;
+    const refreshTok = get().refresh_token;
     if (refreshTok) {
-      try { await logoutApi({ refreshToken: refreshTok }); } catch { /* ignore */ }
+      try { await logoutApi({ refresh_token: refreshTok }); } catch { /* ignore */ }
     }
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_refresh_token');
     localStorage.removeItem('user');
-    set({ token: null, refreshToken: null, user: null });
+    set({ token: null, refresh_token: null, user: null });
   },
   initialize: () => {
     const token = localStorage.getItem('auth_token');

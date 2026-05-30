@@ -1,16 +1,29 @@
 import apiClient from './client';
-import type { GameMode } from '../types';
+import type { GameMode, User } from '../types';
 
 export interface Room {
-  id: string;
-  code: string;
-  name?: string;
-  wordBook: string;
-  mode: GameMode;
-  players: Array<{ id: string; nickname: string }>;
+  id: number;
+  room_code: string;
+  host: User;
+  guest: User | null;
+  wordbook_id: number | null;
+  wordbook_name: string | null;
+  game_mode: string;
+  status: string;
+  total_rounds: number;
+  winner_id: number | null;
+  host_score: number;
+  guest_score: number;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface CreateRoomResponse {
+  room: Room;
 }
 
 export const createRoom = (data: { wordBook: string; name?: string; mode: GameMode }) =>
-  apiClient.post<Room>('/rooms', data);
+  apiClient.post<CreateRoomResponse>('/rooms', data);
 export const joinRoom = (data: { code: string }) =>
-  apiClient.post<Room>('/rooms/join', data);
+  apiClient.post<CreateRoomResponse>('/rooms/join', data);
