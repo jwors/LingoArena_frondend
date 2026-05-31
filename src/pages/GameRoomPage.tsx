@@ -8,6 +8,7 @@ import { ScoreBoard } from '../components/game/ScoreBoard';
 import { QuestionCard } from '../components/game/QuestionCard';
 import { AnswerForm } from '../components/game/AnswerForm';
 import { ResultFeedback } from '../components/game/ResultFeedback';
+import { WaitingLobby } from '../components/game/WaitingLobby';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 
 export default function GameRoomPage() {
@@ -17,8 +18,8 @@ export default function GameRoomPage() {
   // joinWithCode=true 表示是从加入房间进来的，param是roomCode
   // 否则是从创建房间进来的，param是roomId
   const joinWithCode = location.state?.joinWithCode === true;
-  const roomId = joinWithCode ? undefined : param;
-  const roomCode = joinWithCode ? param : undefined;
+  const roomIdByParam = joinWithCode ? undefined : param;
+  const roomCodeByParam = joinWithCode ? param : undefined;
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -34,6 +35,9 @@ export default function GameRoomPage() {
   const gameMode = useGameStore((s) => s.gameMode);
   const currentTurnPlayerId = useGameStore((s) => s.currentTurnPlayerId);
   const reset = useGameStore((s) => s.reset);
+  const readyPlayerIds = useGameStore((s) => s.readyPlayerIds);
+  const hostId = useGameStore((s) => s.hostId);
+  const roomCode = useGameStore((s) => s.roomCode);
   const connect = useWSStore((s) => s.connect);
   const disconnect = useWSStore((s) => s.disconnect);
   const send = useWSStore((s) => s.send);
@@ -42,12 +46,7 @@ export default function GameRoomPage() {
 
   useEffect(() => {
     if (!token || !param) return;
-    console.log(token)
-    console.log(roomId)
-    console.log(roomCode)
-    connect(token, roomId, roomCode, () => {
-      send('player:ready', { roomId: param });
-    });
+    connect(token, roomIdByParam, roomCodeByParam);
     return () => { disconnect(); reset(); };
   }, [token, param]);
 
@@ -62,6 +61,9 @@ export default function GameRoomPage() {
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
+  const handleReady = () => send('player:ready', { roomId: param! });
+  const handleStartGame = () => send('game:start', { roomId: param! });
+
   return (
     <div className="page-bg">
       {/* Background decoration */}
@@ -74,10 +76,16 @@ export default function GameRoomPage() {
         <GameHeader opponent={opponent} wordBook={wordBook} timeLeft={timeLeft} opponentStatus={opponentStatus} gameMode={gameMode} currentTurnPlayerId={currentTurnPlayerId} myId={String(user?.id || '')} />
         <ScoreBoard myScore={myScore} opponentScore={oppScore} />
         {gameStatus === 'waiting' && (
-          <div className="text-center py-12 animate-fade-in">
-            <LoadingSpinner />
-            <p className="text-gray-500 mt-4">等待对手加入...</p>
-          </div>
+          <WaitingLobby
+            players={players}
+            myId={myId}
+            hostId={hostId}
+            readyPlayerIds={readyPlayerIds}
+            roomCode={roomCode}
+            isHost={!joinWithCode}
+            onReady={handleReady}
+            onStartGame={handleStartGame}
+          />
         )}
         {gameStatus === 'playing' && currentQuestion && (
           <>

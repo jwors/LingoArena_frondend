@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useGameStore } from './gameStore';
+import { useAuthStore } from './authStore';
 
 const WS_URL = import.meta.env.VITE_WS_URL || '/ws/room';
 
@@ -57,25 +58,51 @@ export const useWSStore = create<WSState>()((set, get) => ({
           case 'room_joined':
             if (payload.players) {
               // Initial join: full room data
-              g.setRoom(payload.roomId || payload.room?.id, payload.players, payload.wordBook);
+              const hostId = payload.hostId || payload.host?.id || null;
+              const roomCode = payload.roomCode || payload.room?.room_code || null;
+              g.setRoom(
+                payload.roomId || payload.room?.id,
+                payload.players,
+                payload.wordBook,
+                hostId,
+                roomCode
+              );
             } else if (payload.user) {
-              // Opponent joined: add player to list
-              const currentPlayers = useGameStore.getState().players;
-              const newPlayer = {
-                id: String(payload.user.id),
-                nickname: payload.user.nickname || `Player ${payload.user.id}`,
-              };
-              // Avoid duplicates
-              if (!currentPlayers.some((p) => p.id === newPlayer.id)) {
+              const currentUserId = String(useAuthStore.getState().user?.id ?? '');
+              const isSelf = String(payload.user.id) === currentUserId;
+              if (isSelf) {
+                // Current user joined — initialize room with own info
+                const ws = get();
                 g.setRoom(
-                  useGameStore.getState().roomId ?? '',
-                  [...currentPlayers, newPlayer],
-                  useGameStore.getState().wordBook!
+                  ws.roomId ?? ws.roomCode ?? '',
+                  [{ id: String(payload.user.id), nickname: payload.user.nickname }],
+                  payload.wordBook ?? null
                 );
+              } else {
+                // Opponent joined: add player to list
+                const currentPlayers = useGameStore.getState().players;
+                const currentState = useGameStore.getState();
+                const newPlayer = {
+                  id: String(payload.user.id),
+                  nickname: payload.user.nickname || `Player ${payload.user.id}`,
+                };
+                // Avoid duplicates
+                if (!currentPlayers.some((p) => p.id === newPlayer.id)) {
+                  g.setRoom(
+                    useGameStore.getState().roomId ?? '',
+                    [...currentPlayers, newPlayer],
+                    useGameStore.getState().wordBook!,
+                    currentState.hostId,
+                    currentState.roomCode
+                  );
+                }
               }
             }
             break;
           case 'game:start': g.startGame(); break;
+          case 'player:ready_status':
+            if (payload.userId) g.setPlayerReady(String(payload.userId));
+            break;
           case 'question:new': g.setQuestion(payload.chinese, payload.round); break;
           case 'answer:result': g.setResult(payload); break;
           case 'score:update': g.setScores(payload.scores); break;

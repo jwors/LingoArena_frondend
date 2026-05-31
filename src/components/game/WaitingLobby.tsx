@@ -1,0 +1,168 @@
+import { useState } from 'react';
+import { showToast } from '../shared/Toast';
+import type { Player } from '../../types';
+
+interface WaitingLobbyProps {
+  players: Player[];
+  myId: string;
+  hostId: string | null;
+  readyPlayerIds: string[];
+  roomCode: string | null;
+  isHost: boolean;
+  onReady: () => void;
+  onStartGame: () => void;
+}
+
+export function WaitingLobby({
+  players,
+  myId,
+  hostId,
+  readyPlayerIds,
+  roomCode,
+  isHost,
+  onReady,
+  onStartGame,
+}: WaitingLobbyProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!roomCode) return;
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopied(true);
+      showToast('房间码已复制', 'success');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast('复制失败，请手动抄录', 'error');
+    }
+  };
+
+  const guestReady = players.some((p) => !hostId || p.id !== hostId ? readyPlayerIds.includes(p.id) : false);
+  const onlyHost = players.length <= 1 || (players.length === 1 && hostId === players[0].id);
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Room Code Card */}
+      {roomCode && (
+        <div className="card text-center">
+          <p className="text-sm text-gray-500 mb-2">房间码</p>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-3xl font-mono font-bold tracking-[0.3em] text-violet-600">
+              {roomCode}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded-lg hover:bg-violet-50 transition-colors text-gray-400 hover:text-violet-600"
+              title="复制房间码"
+            >
+              {copied ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Players Card */}
+      <div className="card space-y-3">
+        <h3 className="text-sm font-medium text-gray-500">玩家列表</h3>
+        {players.map((player) => {
+          const isMe = player.id === myId;
+          const isPlayerHost = player.id === hostId;
+          const isReady = readyPlayerIds.includes(player.id);
+          return (
+            <div
+              key={player.id}
+              className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-sm font-medium">
+                  {player.nickname?.[0] || '?'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-gray-900">
+                      {player.nickname}
+                    </span>
+                    {isPlayerHost && (
+                      <span className="text-xs" title="房主">👑</span>
+                    )}
+                    {isMe && (
+                      <span className="text-xs text-gray-400">(你)</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isReady ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700">
+                    ✅ 已准备
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-400">
+                    ❌ 未准备
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="card">
+        {onlyHost && players.length >= 1 ? (
+          <div className="text-center py-4">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">等待对手加入...</p>
+          </div>
+        ) : isHost ? (
+          <div className="space-y-3">
+            <button
+              onClick={onStartGame}
+              disabled={!guestReady}
+              className="w-full bg-violet-600 text-white py-3 rounded-xl
+                         hover:bg-violet-700 hover:shadow-lg
+                         transition-all duration-200
+                         disabled:opacity-40 disabled:cursor-not-allowed
+                         flex items-center justify-center gap-2
+                         active:scale-[0.98] font-medium text-base"
+            >
+              <span>🚀</span>
+              开始游戏
+            </button>
+            {!guestReady && (
+              <p className="text-center text-sm text-gray-400">等待玩家准备...</p>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={onReady}
+            disabled={readyPlayerIds.includes(myId)}
+            className={`w-full py-3 rounded-xl font-medium text-base
+                       transition-all duration-200
+                       flex items-center justify-center gap-2
+                       active:scale-[0.98]
+                       ${
+              readyPlayerIds.includes(myId)
+                ? 'bg-emerald-50 text-emerald-600 cursor-default'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg'
+            }`}
+          >
+            {readyPlayerIds.includes(myId) ? (
+              <>✅ 已准备</>
+            ) : (
+              <>⚔️ 准备</>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

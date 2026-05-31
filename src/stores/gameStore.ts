@@ -16,8 +16,11 @@ interface GameState {
   gameEndData: GameEndData | null;
   gameMode: GameMode;
   currentTurnPlayerId: string | null;
+  readyPlayerIds: string[];
+  hostId: string | null;
+  roomCode: string | null;
 
-  setRoom: (roomId: string, players: Player[], wordBook: WordBook) => void;
+  setRoom: (roomId: string, players: Player[], wordBook: WordBook, hostId?: string | null, roomCode?: string | null) => void;
   startGame: () => void;
   setQuestion: (chinese: string, round: number) => void;
   setResult: (result: AnswerResult) => void;
@@ -28,6 +31,9 @@ interface GameState {
   submitAnswer: () => void;
   setGameMode: (mode: GameMode) => void;
   setTurn: (playerId: string) => void;
+  setPlayerReady: (playerId: string) => void;
+  setHostId: (id: string) => void;
+  setRoomCode: (code: string) => void;
   reset: () => void;
 }
 
@@ -46,11 +52,14 @@ const initialState = {
   gameEndData: null,
   gameMode: 'rush' as GameMode,
   currentTurnPlayerId: null,
+  readyPlayerIds: [],
+  hostId: null,
+  roomCode: null,
 };
 
 export const useGameStore = create<GameState>()((set) => ({
   ...initialState,
-  setRoom: (roomId, players, wordBook) => set({ roomId, players, wordBook, status: 'waiting' }),
+  setRoom: (roomId, players, wordBook, hostId, roomCode) => set({ roomId, players, wordBook, status: 'waiting', hostId: hostId ?? null, roomCode: roomCode ?? null }),
   startGame: () => set((state) => {
     const scores: Record<string, number> = {};
     for (const p of state.players) scores[p.id] = 0;
@@ -65,5 +74,12 @@ export const useGameStore = create<GameState>()((set) => ({
   submitAnswer: () => set({ hasSubmitted: true }),
   setGameMode: (mode) => set({ gameMode: mode }),
   setTurn: (playerId) => set({ currentTurnPlayerId: playerId }),
+  setPlayerReady: (playerId) => set((state) => ({
+    readyPlayerIds: state.readyPlayerIds.includes(playerId)
+      ? state.readyPlayerIds
+      : [...state.readyPlayerIds, playerId],
+  })),
+  setHostId: (id) => set({ hostId: id }),
+  setRoomCode: (code) => set({ roomCode: code }),
   reset: () => set(initialState),
 }));
