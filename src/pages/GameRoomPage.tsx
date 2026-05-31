@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useWSStore } from '../stores/wsStore';
@@ -11,8 +11,14 @@ import { ResultFeedback } from '../components/game/ResultFeedback';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 
 export default function GameRoomPage() {
-  const { id: roomId } = useParams<{ id: string }>();
+  const { id: param } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  // joinWithCode=true 表示是从加入房间进来的，param是roomCode
+  // 否则是从创建房间进来的，param是roomId
+  const joinWithCode = location.state?.joinWithCode === true;
+  const roomId = joinWithCode ? undefined : param;
+  const roomCode = joinWithCode ? param : undefined;
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -35,19 +41,21 @@ export default function GameRoomPage() {
   if (!isAuthenticated()) { navigate('/login', { replace: true }); return null; }
 
   useEffect(() => {
-    if (!token || !roomId) return;
-    connect(token, () => {
-      send('room:join', { roomId });
-      send('player:ready', { roomId });
+    if (!token || !param) return;
+    console.log(token)
+    console.log(roomId)
+    console.log(roomCode)
+    connect(token, roomId, roomCode, () => {
+      send('player:ready', { roomId: param });
     });
     return () => { disconnect(); reset(); };
-  }, [token, roomId]);
+  }, [token, param]);
 
   useEffect(() => {
     if (gameStatus === 'finished' && gameEndData) navigate('/results');
   }, [gameStatus, gameEndData, navigate]);
 
-  if (!roomId) return <div className="page-bg p-8 text-center">无效的房间</div>;
+  if (!param) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
   const myId = String(user?.id || '');
   const opponent = players.find((p) => p.id !== myId) || players[0] || null;
@@ -75,7 +83,7 @@ export default function GameRoomPage() {
           <>
             <QuestionCard chinese={currentQuestion.chinese} round={currentQuestion.round} />
             <ResultFeedback result={result} />
-            <AnswerForm roomId={roomId} gameMode={gameMode} />
+            <AnswerForm roomId={param!} gameMode={gameMode} />
           </>
         )}
         {gameStatus === 'playing' && !currentQuestion && (

@@ -54,7 +54,7 @@ export default function LobbyPage() {
 
         <div className="space-y-6 animate-slide-up">
           <CreateRoomPanel onCreated={(id) => navigate(`/room/${id}`)} />
-          <JoinRoomPanel onJoined={(id) => navigate(`/room/${id}`)} />
+          <JoinRoomPanel onJoined={(code) => navigate(`/room/${code}`, { state: { joinWithCode: true } })} />
         </div>
       </main>
     </div>

@@ -25,5 +25,5 @@ export interface CreateRoomResponse {
 
 export const createRoom = (data: { wordBook: string; name?: string; mode: GameMode }) =>
   apiClient.post<CreateRoomResponse>('/rooms', data);
-export const joinRoom = (data: { code: string }) =>
+export const joinRoom = (data: { room_code: string }) =>
   apiClient.post<CreateRoomResponse>('/rooms/join', data);

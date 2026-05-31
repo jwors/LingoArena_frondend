@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
   user: { id: number; nickname: string };
 }
 
@@ -35,7 +35,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthError = error.response?.status === 401 || error.response?.data?.code === 'TOKEN_EXPIRED';
+    if (isAuthError && !originalRequest._retry) {
       originalRequest._retry = true;
       if (isRefreshing) {
         return new Promise((resolve) => {
@@ -58,12 +59,12 @@ apiClient.interceptors.response.use(
       try {
         const { data } = await axios.post<AuthResponse>(
           `${API_BASE_URL}/api/auth/refresh`,
-          { refreshToken: refreshTok }
+          { refresh_token: refreshTok }
         );
-        localStorage.setItem('auth_token', data.accessToken);
-        localStorage.setItem('auth_refresh_token', data.refreshToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-        onRefreshed(data.accessToken);
+        localStorage.setItem('auth_token', data.access_token);
+        localStorage.setItem('auth_refresh_token', data.refresh_token);
+        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+        onRefreshed(data.access_token);
         return apiClient(originalRequest);
       } catch {
         localStorage.removeItem('auth_token');

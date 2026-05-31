@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import { useGameStore } from './gameStore';
 
-const WS_URL = import.meta.env.VITE_WS_URL || '/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || '/ws/room';
 
 interface WSState {
   ws: WebSocket | null;
   connected: boolean;
   _intentionalDisconnect: boolean;
-  connect: (token: string, onOpen?: () => void) => void;
+  roomId: string | null;
+  roomCode: string | null;
+  connect: (token: string, roomId?: string, roomCode?: string, onOpen?: () => void) => void;
   disconnect: () => void;
   send: (event: string, data: Record<string, unknown>) => void;
 }
@@ -18,8 +20,10 @@ export const useWSStore = create<WSState>()((set, get) => ({
   ws: null,
   connected: false,
   _intentionalDisconnect: false,
+  roomId: null,
+  roomCode: null,
 
-  connect: (token: string, onOpen?: () => void) => {
+  connect: (token: string, roomId?: string, roomCode?: string, onOpen?: () => void) => {
     // Clear any pending reconnect timer before creating a new connection
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -30,9 +34,11 @@ export const useWSStore = create<WSState>()((set, get) => ({
     const host = window.location.host;
     const wsEndpoint = WS_URL.startsWith('ws') ? WS_URL : `${protocol}//${host}${WS_URL}`;
 
-    // Pass token via WebSocket subprotocol instead of query parameter
-    // to avoid leaking it to proxy servers, server logs, and browser history
-    const ws = new WebSocket(wsEndpoint, ['Bearer', token]);
+    // Pass token and roomId via query parameters
+    const params = new URLSearchParams({ token });
+    if (roomId) params.set('roomId', roomId);
+    if (roomCode) params.set('roomCode', roomCode);
+    const ws = new WebSocket(`${wsEndpoint}?${params}`);
 
     ws.onopen = () => {
       set({ connected: true, _intentionalDisconnect: false });
@@ -41,23 +47,52 @@ export const useWSStore = create<WSState>()((set, get) => ({
 
     ws.onmessage = (event) => {
       try {
-        const { event: wsEvent, data } = JSON.parse(event.data);
+        const msg = JSON.parse(event.data);
+        // Support both { type, payload } and { event, data } formats
+        const type = msg.type || msg.event;
+        const payload = msg.payload || msg.data;
         const g = useGameStore.getState();
-        switch (wsEvent) {
-          case 'room:joined': g.setRoom(data.roomId, data.players, data.wordBook); break;
+        switch (type) {
+          case 'room:joined':
+          case 'room_joined':
+            if (payload.players) {
+              // Initial join: full room data
+              g.setRoom(payload.roomId || payload.room?.id, payload.players, payload.wordBook);
+            } else if (payload.user) {
+              // Opponent joined: add player to list
+              const currentPlayers = useGameStore.getState().players;
+              const newPlayer = {
+                id: String(payload.user.id),
+                nickname: payload.user.nickname || `Player ${payload.user.id}`,
+              };
+              // Avoid duplicates
+              if (!currentPlayers.some((p) => p.id === newPlayer.id)) {
+                g.setRoom(
+                  useGameStore.getState().roomId ?? '',
+                  [...currentPlayers, newPlayer],
+                  useGameStore.getState().wordBook!
+                );
+              }
+            }
+            break;
           case 'game:start': g.startGame(); break;
-          case 'question:new': g.setQuestion(data.chinese, data.round); break;
-          case 'answer:result': g.setResult(data); break;
-          case 'score:update': g.setScores(data.scores); break;
-          case 'timer:tick': g.setTimeLeft(data.timeLeft); break;
-          case 'opponent:status': g.setOpponentStatus(data.status); break;
-          case 'turn:start': g.setTurn(data.currentPlayerId); break;
-          case 'game:end': g.endGame(data); break;
+          case 'question:new': g.setQuestion(payload.chinese, payload.round); break;
+          case 'answer:result': g.setResult(payload); break;
+          case 'score:update': g.setScores(payload.scores); break;
+          case 'timer:tick': g.setTimeLeft(payload.timeLeft); break;
+          case 'opponent:status': g.setOpponentStatus(payload.status); break;
+          case 'turn:start': g.setTurn(payload.currentPlayerId); break;
+          case 'game:end': g.endGame(payload); break;
         }
       } catch (err) { console.error('[WS] parse error:', err); }
     };
 
-    ws.onclose = () => {
+    ws.onerror = (err) => {
+      console.error('[WS] connection error:', err);
+    };
+
+    ws.onclose = (event) => {
+      console.log('[WS] closed:', event.code, event.reason || 'no reason');
       set({ connected: false, ws: null });
 
       // Only auto-reconnect if the disconnect was NOT intentional
@@ -65,19 +100,20 @@ export const useWSStore = create<WSState>()((set, get) => ({
       if (_intentionalDisconnect) return;
 
       reconnectTimer = setTimeout(() => {
-        const t = localStorage.getItem('token');
-        if (t) get().connect(t);
+        const t = localStorage.getItem('auth_token');
+        const { roomId: rid, roomCode: rc } = get();
+        if (t) get().connect(t, rid ?? undefined, rc ?? undefined);
       }, 3000);
     };
 
-    set({ ws });
+    set({ ws, roomId: roomId ?? null, roomCode: roomCode ?? null });
   },
 
   disconnect: () => {
     const { ws } = get();
 
     // Mark disconnect as intentional BEFORE closing the socket
-    set({ _intentionalDisconnect: true });
+    set({ _intentionalDisconnect: true, roomId: null, roomCode: null });
 
     // Clear reconnect timer BEFORE closing so onclose handler won't schedule a reconnect
     if (reconnectTimer) {
@@ -89,10 +125,10 @@ export const useWSStore = create<WSState>()((set, get) => ({
     set({ ws: null, connected: false });
   },
 
-  send: (event: string, data: Record<string, unknown>) => {
+  send: (type: string, payload: Record<string, unknown>) => {
     const { ws, connected } = get();
     if (connected && ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ event, data }));
+      ws.send(JSON.stringify({ type, payload }));
     }
   },
 }));
