@@ -1,5 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from '../gameStore';
+
+vi.mock('../../api/room', () => ({
+  startGameApi: vi.fn(() => Promise.resolve({ data: {} })),
+}));
 
 describe('gameStore', () => {
   beforeEach(() => useGameStore.getState().reset());
@@ -19,10 +23,10 @@ describe('gameStore', () => {
     expect(s.status).toBe('waiting');
   });
 
-  it('should init scores on game start', () => {
+  it('should init scores on game start', async () => {
     const wb = { name: 'cet4', label: 'CET-4', emoji: '📘', color: 'blue' };
     useGameStore.getState().setRoom('r1', [{ id: 'p1', nickname: 'A' }, { id: 'p2', nickname: 'B' }], wb);
-    useGameStore.getState().startGame();
+    await useGameStore.getState().startGame();
     const s = useGameStore.getState();
     expect(s.status).toBe('playing');
     expect(s.scores['p1']).toBe(0);

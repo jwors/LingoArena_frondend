@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus, GameMode } from '../types';
+import { startGameApi } from '../api/room';
 
 interface GameState {
   roomId: string | null;
@@ -21,7 +22,7 @@ interface GameState {
   roomCode: string | null;
 
   setRoom: (roomId: string, players: Player[], wordBook: WordBook, hostId?: string | null, roomCode?: string | null) => void;
-  startGame: () => void;
+  startGame: () => Promise<void>;
   setQuestion: (chinese: string, round: number) => void;
   setResult: (result: AnswerResult) => void;
   setScores: (scores: Record<string, number>) => void;
@@ -34,6 +35,7 @@ interface GameState {
   setPlayerReady: (playerId: string) => void;
   setHostId: (id: string) => void;
   setRoomCode: (code: string) => void;
+  leaveRoom: () => void;
   reset: () => void;
 }
 
@@ -57,14 +59,17 @@ const initialState = {
   roomCode: null,
 };
 
-export const useGameStore = create<GameState>()((set) => ({
+export const useGameStore = create<GameState>()((set, get) => ({
   ...initialState,
   setRoom: (roomId, players, wordBook, hostId, roomCode) => set({ roomId, players, wordBook, status: 'waiting', hostId: hostId ?? null, roomCode: roomCode ?? null }),
-  startGame: () => set((state) => {
+  startGame: async () => {
+    const { roomId, players } = get();
+    if (!roomId) return;
     const scores: Record<string, number> = {};
-    for (const p of state.players) scores[p.id] = 0;
-    return { status: 'playing', scores, hasSubmitted: false };
-  }),
+    for (const p of players) scores[p.id] = 0;
+    await startGameApi(roomId);
+    set({ status: 'playing', scores, hasSubmitted: false });
+  },
   setQuestion: (chinese, round) => set({ currentQuestion: { chinese, round }, result: null, timeLeft: 15, hasSubmitted: false }),
   setResult: (result) => set({ result }),
   setScores: (scores) => set({ scores }),
@@ -76,10 +81,11 @@ export const useGameStore = create<GameState>()((set) => ({
   setTurn: (playerId) => set({ currentTurnPlayerId: playerId }),
   setPlayerReady: (playerId) => set((state) => ({
     readyPlayerIds: state.readyPlayerIds.includes(playerId)
-      ? state.readyPlayerIds
+      ? state.readyPlayerIds.filter((id) => id !== playerId)
       : [...state.readyPlayerIds, playerId],
   })),
   setHostId: (id) => set({ hostId: id }),
   setRoomCode: (code) => set({ roomCode: code }),
+  leaveRoom: () => set({ ...initialState, status: 'idle' }),
   reset: () => set(initialState),
 }));

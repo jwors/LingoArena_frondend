@@ -26,7 +26,8 @@
       "Bash(cd /d/曹浩洋学习/LingoArena_frondend && npm run build 2>&1)",
       "Bash(cd /d/曹浩洋学习/LingoArena_frondend && npm install sharp 2>&1)",
       "Bash(cd /d/曹浩洋学习/LingoArena_frondend && node scripts/gen-favicon.mjs 2>&1)",
-      "Bash(cd /d/曹浩洋学习/LingoArena_frondend && git add .env index.html src/api/auth.ts src/api/client.ts src/components/game/AnswerForm.tsx src/pages/GameRoomPage.tsx src/pages/LoginPage.tsx src/stores/__tests__/authStore.test.ts src/stores/authStore.ts src/types/index.ts vite.config.ts public scripts/gen-favicon.mjs 2>&1)"
+      "Bash(cd /d/曹浩洋学习/LingoArena_frondend && git add .env index.html src/api/auth.ts src/api/client.ts src/components/game/AnswerForm.tsx src/pages/GameRoomPage.tsx src/pages/LoginPage.tsx src/stores/__tests__/authStore.test.ts src/stores/authStore.ts src/types/index.ts vite.config.ts public scripts/gen-favicon.mjs 2>&1)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

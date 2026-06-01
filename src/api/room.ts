@@ -27,3 +27,7 @@ export const createRoom = (data: { wordBook: string; name?: string; mode: GameMo
   apiClient.post<CreateRoomResponse>('/rooms', data);
 export const joinRoom = (data: { room_code: string }) =>
   apiClient.post<CreateRoomResponse>('/rooms/join', data);
+export const leaveRoom = (roomId: number) =>
+  apiClient.post(`/rooms/${roomId}/leave`);
+export const startGameApi = (roomId: number) =>
+  apiClient.post(`/rooms/${roomId}/start`);

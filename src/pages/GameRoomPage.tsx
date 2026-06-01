@@ -54,6 +54,8 @@ export default function GameRoomPage() {
     if (gameStatus === 'finished' && gameEndData) navigate('/results');
   }, [gameStatus, gameEndData, navigate]);
 
+  console.log(gameStatus)
+
   if (!param) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
   const myId = String(user?.id || '');
