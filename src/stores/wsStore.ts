@@ -99,7 +99,12 @@ export const useWSStore = create<WSState>()((set, get) => ({
               }
             }
             break;
-          case 'game:start': g.startGame(); break;
+          case 'game:start':
+            // 游戏已由服务端启动，仅初始化分数，不再重复调 REST API
+            const initScores: Record<string, number> = {};
+            for (const p of g.players) initScores[p.id] = 0;
+            useGameStore.setState({ status: 'playing', scores: initScores, hasSubmitted: false });
+            break;
           case 'player:ready_status':
             if (payload.userId) g.setPlayerReady(String(payload.userId));
             break;
