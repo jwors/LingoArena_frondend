@@ -1,18 +1,50 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useGameStore } from '../stores/gameStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { CreateRoomPanel } from '../components/lobby/CreateRoomPanel';
 import { JoinRoomPanel } from '../components/lobby/JoinRoomPanel';
 import { showToast } from '../components/shared/Toast';
+import { useEffect } from 'react';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   useWebSocket();
 
+  // 从分享链接进入时，自动填充房间码
+  const roomCodeFromUrl = searchParams.get('roomCode') || '';
+
+  useEffect(() => {
+    if (roomCodeFromUrl) {
+      showToast('已填充房间码，点击加入房间', 'info');
+    }
+  }, [roomCodeFromUrl]);
+
   if (!token) { navigate('/login', { replace: true }); return null; }
+
+  const handleCreated = (id: string, roomCode?: string) => {
+    // 在导航前先设置 store，确保 GameRoomPage 挂载时已有状态
+    if (roomCode) {
+      const curUser = useAuthStore.getState().user;
+      useGameStore.setState({
+        roomCode,
+        roomId: id,
+        status: 'waiting',
+        hostId: String(curUser?.id ?? ''),
+        players: curUser ? [{ id: String(curUser.id), nickname: curUser.nickname || '' }] : [],
+        scores: {},
+      });
+    }
+    navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
+  };
+
+  const handleJoined = (code: string) => {
+    navigate(`/room/${code}?joinWithCode=true`);
+  };
 
   return (
     <div className="page-bg">
@@ -53,8 +85,8 @@ export default function LobbyPage() {
         </div>
 
         <div className="space-y-6 animate-slide-up">
-          <CreateRoomPanel onCreated={(id) => navigate(`/room/${id}`)} />
-          <JoinRoomPanel onJoined={(code) => navigate(`/room/${code}`, { state: { joinWithCode: true } })} />
+          <CreateRoomPanel onCreated={handleCreated} />
+          <JoinRoomPanel initialCode={roomCodeFromUrl} onJoined={handleJoined} />
         </div>
       </main>
     </div>

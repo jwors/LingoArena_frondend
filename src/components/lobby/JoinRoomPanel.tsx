@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { joinRoom } from '../../api/room';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { showToast } from '../shared/Toast';
 
-interface Props { onJoined: (roomId: string) => void; }
+interface Props { onJoined: (roomId: string) => void; initialCode?: string; }
 
-export function JoinRoomPanel({ onJoined }: Props) {
-  const [code, setCode] = useState('');
+export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
+  const [code, setCode] = useState(initialCode);
+
+  useEffect(() => {
+    if (initialCode) setCode(initialCode);
+  }, [initialCode]);
   const [loading, setLoading] = useState(false);
 
   const handleJoin = async () => {

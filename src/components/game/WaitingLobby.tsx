@@ -11,6 +11,7 @@ interface WaitingLobbyProps {
   isHost: boolean;
   onReady: () => void;
   onStartGame: () => void;
+  minimal?: boolean;
 }
 
 export function WaitingLobby({
@@ -22,23 +23,41 @@ export function WaitingLobby({
   isHost,
   onReady,
   onStartGame,
+  minimal = false,
 }: WaitingLobbyProps) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
-  const handleCopy = async () => {
+  const handleCopyCode = async () => {
     if (!roomCode) return;
     try {
       await navigator.clipboard.writeText(roomCode);
-      setCopied(true);
+      setCopied('code');
       showToast('房间码已复制', 'success');
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       showToast('复制失败，请手动抄录', 'error');
     }
   };
 
+  const handleShareLink = async () => {
+    if (!roomCode) return;
+    const url = `${window.location.origin}/lobby?roomCode=${roomCode}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'LingoArena 房间邀请', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied('link');
+        showToast('房间链接已复制，发送给好友即可', 'success');
+        setTimeout(() => setCopied(null), 2000);
+      }
+    } catch {
+      showToast('分享失败', 'error');
+    }
+  };
+
   const guestReady = players.some((p) => !hostId || p.id !== hostId ? readyPlayerIds.includes(p.id) : false);
-  const onlyHost = players.length <= 1 || (players.length === 1 && hostId === players[0].id);
+  const onlyHost = players.length <= 1;
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -51,11 +70,11 @@ export function WaitingLobby({
               {roomCode}
             </span>
             <button
-              onClick={handleCopy}
+              onClick={handleCopyCode}
               className="p-2 rounded-lg hover:bg-violet-50 transition-colors text-gray-400 hover:text-violet-600"
               title="复制房间码"
             >
-              {copied ? (
+              {copied === 'code' ? (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -66,9 +85,36 @@ export function WaitingLobby({
               )}
             </button>
           </div>
+
+          {/* Share Button */}
+          <button
+            onClick={handleShareLink}
+            className="mt-4 w-full bg-violet-100 text-violet-700 py-2.5 rounded-xl
+                       hover:bg-violet-200 transition-all duration-200
+                       flex items-center justify-center gap-2
+                       active:scale-[0.98] text-sm font-medium"
+          >
+            {copied === 'link' ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                链接已复制
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                分享房间链接
+              </>
+            )}
+          </button>
         </div>
       )}
 
+      {!minimal && (
+        <>
       {/* Players Card */}
       <div className="card space-y-3">
         <h3 className="text-sm font-medium text-gray-500">玩家列表</h3>
@@ -115,7 +161,6 @@ export function WaitingLobby({
         })}
       </div>
 
-      {/* Action Buttons */}
       <div className="card">
         {onlyHost && players.length >= 1 ? (
           <div className="text-center py-4">
@@ -163,6 +208,8 @@ export function WaitingLobby({
           </button>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

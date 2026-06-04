@@ -112,7 +112,19 @@ export const useWSStore = create<WSState>()((set, get) => ({
           case 'answer:result': g.setResult(payload); break;
           case 'score:update': g.setScores(payload.scores); break;
           case 'timer:tick': g.setTimeLeft(payload.timeLeft); break;
-          case 'opponent:status': g.setOpponentStatus(payload.status); break;
+          case 'opponent:status':
+            if (payload.userId) {
+              const userId = String(payload.userId);
+              const currentState = useGameStore.getState();
+              // 新玩家连接时加入 players 列表（避免后端未广播 room:joined 导致列表缺失）
+              if (payload.status === 'connected' && !currentState.players.some((p) => p.id === userId)) {
+                currentState.addPlayer({ id: userId, nickname: `玩家 ${userId}` });
+              }
+              if (payload.status === 'typing' || payload.status === 'submitted') {
+                currentState.setOpponentStatus(payload.status);
+              }
+            }
+            break;
           case 'turn:start': g.setTurn(payload.currentPlayerId); break;
           case 'game:end': g.endGame(payload); break;
         }

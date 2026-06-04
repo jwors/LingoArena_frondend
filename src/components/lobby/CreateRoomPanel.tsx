@@ -5,7 +5,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { showToast } from '../shared/Toast';
 import type { GameMode } from '../../types';
 
-interface Props { onCreated: (roomId: string) => void; }
+interface Props { onCreated: (roomId: string, roomCode?: string) => void; }
 
 export function CreateRoomPanel({ onCreated }: Props) {
   const [selectedBook, setSelectedBook] = useState('cet4');
@@ -18,7 +18,7 @@ export function CreateRoomPanel({ onCreated }: Props) {
     try {
       const { data: { room } } = await createRoom({ wordBook: selectedBook, name: roomName || undefined, mode: gameMode });
       showToast('房间创建成功', 'success');
-      onCreated(String(room.id));
+      onCreated(String(room.id), room.room_code);
     } catch { showToast('创建房间失败', 'error'); }
     finally { setLoading(false); }
   };

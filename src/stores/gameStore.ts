@@ -22,6 +22,7 @@ interface GameState {
   roomCode: string | null;
 
   setRoom: (roomId: string, players: Player[], wordBook: WordBook, hostId?: string | null, roomCode?: string | null) => void;
+  addPlayer: (player: Player) => void;
   startGame: () => Promise<void>;
   setQuestion: (chinese: string, round: number) => void;
   setResult: (result: AnswerResult) => void;
@@ -37,6 +38,7 @@ interface GameState {
   setRoomCode: (code: string) => void;
   leaveRoom: () => void;
   reset: () => void;
+  resetToWaiting: () => void;
 }
 
 const initialState = {
@@ -62,12 +64,15 @@ const initialState = {
 export const useGameStore = create<GameState>()((set, get) => ({
   ...initialState,
   setRoom: (roomId, players, wordBook, hostId, roomCode) => set({ roomId, players, wordBook, status: 'waiting', hostId: hostId ?? null, roomCode: roomCode ?? null }),
+  addPlayer: (player) => set((state) => ({
+    players: state.players.some((p) => p.id === player.id) ? state.players : [...state.players, player],
+  })),
   startGame: async () => {
     const { roomId, players } = get();
     if (!roomId) return;
     const scores: Record<string, number> = {};
     for (const p of players) scores[p.id] = 0;
-    await startGameApi(roomId);
+    await startGameApi(Number(roomId));
     set({ status: 'playing', scores, hasSubmitted: false });
   },
   setQuestion: (chinese, round) => set({ currentQuestion: { chinese, round }, result: null, timeLeft: 15, hasSubmitted: false }),
@@ -88,4 +93,17 @@ export const useGameStore = create<GameState>()((set, get) => ({
   setRoomCode: (code) => set({ roomCode: code }),
   leaveRoom: () => set({ ...initialState, status: 'idle' }),
   reset: () => set(initialState),
+  resetToWaiting: () => set({
+    status: 'waiting',
+    scores: {},
+    currentQuestion: null,
+    timeLeft: 15,
+    roundNumber: 0,
+    result: null,
+    opponentStatus: null,
+    hasSubmitted: false,
+    gameEndData: null,
+    currentTurnPlayerId: null,
+    readyPlayerIds: [],
+  }),
 }));
