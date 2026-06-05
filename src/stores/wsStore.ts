@@ -1,22 +1,38 @@
+// ============================================================
+// WebSocket 状态管理（Zustand Store）
+// 职责：建立/断开 WS 连接、自动重连、事件分发
+// 后端地址由 VITE_WS_URL 环境变量配置，默认 /ws/room
+// ============================================================
 import { create } from 'zustand';
 import { useGameStore } from './gameStore';
 import { useAuthStore } from './authStore';
+import { showToast } from '../components/shared/Toast';
 
+// WebSocket 服务端地址（从环境变量读取，默认代理到后端 /ws/room）
 const WS_URL = import.meta.env.VITE_WS_URL || '/ws/room';
 
+// ============================================================
+// Store 接口定义
+// ============================================================
 interface WSState {
-  ws: WebSocket | null;
-  connected: boolean;
-  _intentionalDisconnect: boolean;
-  roomId: string | null;
-  roomCode: string | null;
+  ws: WebSocket | null;             // WebSocket 实例
+  connected: boolean;               // 是否已连接
+  _intentionalDisconnect: boolean;  // 是否主动断开（用于区分断线重连）
+  roomId: string | null;            // 当前所在房间 ID
+  roomCode: string | null;          // 当前所在房间码
+
+  // Actions
   connect: (token: string, roomId?: string, roomCode?: string, onOpen?: () => void) => void;
   disconnect: () => void;
   send: (event: string, data: Record<string, unknown>) => void;
 }
 
+// 全局重连定时器（模块级，不会被 React 重新渲染重置）
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ============================================================
+// 创建 Store
+// ============================================================
 export const useWSStore = create<WSState>()((set, get) => ({
   ws: null,
   connected: false,
@@ -24,125 +40,208 @@ export const useWSStore = create<WSState>()((set, get) => ({
   roomId: null,
   roomCode: null,
 
+  // ==========================================================
+  // connect — 建立 WebSocket 连接
+  // token: 认证令牌，roomId/roomCode: 加入房间的参数
+  // ==========================================================
   connect: (token: string, roomId?: string, roomCode?: string, onOpen?: () => void) => {
-    // Clear any pending reconnect timer before creating a new connection
+    // 清除之前残留的重连定时器
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
 
+    // 构造 WebSocket URL（支持 HTTPS → WSS 自动升级）
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsEndpoint = WS_URL.startsWith('ws') ? WS_URL : `${protocol}//${host}${WS_URL}`;
 
-    // Pass token and roomId via query parameters
+    // 通过 URL 查询参数传递认证信息和房间标识
     const params = new URLSearchParams({ token });
-    if (roomId) params.set('roomId', roomId);
-    if (roomCode) params.set('roomCode', roomCode);
+    if (roomId) params.set('roomId', roomId);       // 已有 roomId 直接加入
+    if (roomCode) params.set('roomCode', roomCode); // 通过房间码加入
     const ws = new WebSocket(`${wsEndpoint}?${params}`);
 
+    // ---- 连接成功 ----
     ws.onopen = () => {
       set({ connected: true, _intentionalDisconnect: false });
-      onOpen?.();
+      onOpen?.();  // 连接完成回调
     };
 
+    // ---- 收到消息 — 核心事件分发器 ----
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        // Support both { type, payload } and { event, data } formats
+        // 兼容两种消息格式：{ type, payload } 和 { event, data }
         const type = msg.type || msg.event;
         const payload = msg.payload || msg.data;
         const g = useGameStore.getState();
+
         switch (type) {
+          // ====================================================
+          // room:joined — 玩家加入房间
+          // payload.players 存在 → 全量数据（首次加入/创建房间）
+          // payload.user 存在     → 增量数据（其他玩家加入时通知）
+          // ====================================================
           case 'room:joined':
           case 'room_joined':
             if (payload.players) {
-              // Initial join: full room data
+              // ---- 全量数据：初始化整个房间状态 ----
               const hostId = payload.hostId || payload.host?.id || null;
               const roomCode = payload.roomCode || payload.room?.room_code || null;
               g.setRoom(
-                payload.roomId || payload.room?.id,
-                payload.players,
-                payload.wordBook,
-                hostId,
-                roomCode
+                payload.roomId || payload.room?.id,  // 房间 ID
+                payload.players,                      // 当前所有玩家
+                payload.wordBook,                     // 词库信息
+                hostId,                               // 房主
+                roomCode                              // 房间码
               );
             } else if (payload.user) {
+              // ---- 增量数据：单个玩家加入 ----
               const currentUserId = String(useAuthStore.getState().user?.id ?? '');
               const isSelf = String(payload.user.id) === currentUserId;
+
               if (isSelf) {
-                // Current user joined — initialize room with own info
+                // -- 当前玩家自己加入了房间 --
+                // 使用合并策略，避免后到的 payload.user 覆盖之前 payload.players 设好的全量数据
                 const ws = get();
+                const state = useGameStore.getState();
+                const selfId = String(payload.user.id);
+                const selfPlayer = {
+                  id: selfId,
+                  nickname: payload.user.nickname || `Player ${selfId}`,
+                };
+                // 合并：保留已有的 players 列表，确保自己在列表中
+                const mergedPlayers = state.players.some((p) => p.id === selfId)
+                  ? state.players                       // 自己已在列表中，保留不动
+                  : [...state.players, selfPlayer];     // 自己不在列表中则添加
                 g.setRoom(
-                  ws.roomId ?? ws.roomCode ?? '',
-                  [{ id: String(payload.user.id), nickname: payload.user.nickname }],
-                  payload.wordBook ?? null
+                  payload.roomId || (ws.roomId ?? ws.roomCode ?? ''),
+                  mergedPlayers,
+                  payload.wordBook ?? state.wordBook ?? null,
+                  payload.hostId || payload.host?.id || state.hostId || null,
+                  payload.roomCode || payload.room?.room_code || state.roomCode || null
                 );
               } else {
-                // Opponent joined: add player to list
+                // -- 对手加入了房间：添加到玩家列表 --
                 const currentPlayers = useGameStore.getState().players;
                 const currentState = useGameStore.getState();
                 const newPlayer = {
                   id: String(payload.user.id),
                   nickname: payload.user.nickname || `Player ${payload.user.id}`,
                 };
-                // Avoid duplicates
+                // 去重：避免重复添加
                 if (!currentPlayers.some((p) => p.id === newPlayer.id)) {
                   g.setRoom(
-                    useGameStore.getState().roomId ?? '',
-                    [...currentPlayers, newPlayer],
-                    useGameStore.getState().wordBook!,
-                    currentState.hostId,
-                    currentState.roomCode
+                    currentState.roomId ?? '',
+                    [...currentPlayers, newPlayer],  // 追加新玩家
+                    currentState.wordBook!,           // 保留原词库
+                    currentState.hostId,              // 保留原房主
+                    currentState.roomCode             // 保留原房间码
                   );
                 }
               }
             }
             break;
+
+          // ====================================================
+          // game:start — 游戏正式开始
+          // 服务端启动游戏后广播此事件，前端仅初始化分数
+          // ====================================================
           case 'game:start':
-            // 游戏已由服务端启动，仅初始化分数，不再重复调 REST API
             const initScores: Record<string, number> = {};
             for (const p of g.players) initScores[p.id] = 0;
             useGameStore.setState({ status: 'playing', scores: initScores, hasSubmitted: false });
             break;
+
+          // ====================================================
+          // player:ready_status — 玩家准备状态变更
+          // payload: { userId, ready: true/false }
+          // ====================================================
           case 'player:ready_status':
-            if (payload.userId) g.setPlayerReady(String(payload.userId));
+            if (payload.userId) {
+              const ready = payload.ready !== false;  // 默认 true（兼容缺少 ready 字段的情况）
+              g.setPlayerReadyState(String(payload.userId), ready);
+            }
             break;
-          case 'question:new': g.setQuestion(payload.chinese, payload.round); break;
-          case 'answer:result': g.setResult(payload); break;
-          case 'score:update': g.setScores(payload.scores); break;
-          case 'timer:tick': g.setTimeLeft(payload.timeLeft); break;
+
+          // ====================================================
+          // 游戏进行中事件
+          // ====================================================
+          case 'question:new':    g.setQuestion(payload.chinese, payload.round); break;
+          case 'answer:result':   g.setResult(payload); break;
+          case 'score:update':    g.setScores(payload.scores); break;
+          case 'timer:tick':      g.setTimeLeft(payload.timeLeft); break;
+
+          // ====================================================
+          // opponent:status — 对手输入状态
+          // { status: 'typing' | 'submitted' | 'connected' }
+          // ====================================================
           case 'opponent:status':
             if (payload.userId) {
               const userId = String(payload.userId);
               const currentState = useGameStore.getState();
-              // 新玩家连接时加入 players 列表（避免后端未广播 room:joined 导致列表缺失）
+              // 新玩家连接时，补充加入 players 列表（服务端未广播 room:joined 时的兜底）
               if (payload.status === 'connected' && !currentState.players.some((p) => p.id === userId)) {
                 currentState.addPlayer({ id: userId, nickname: `玩家 ${userId}` });
               }
+              // 更新打字/已提交状态
               if (payload.status === 'typing' || payload.status === 'submitted') {
                 currentState.setOpponentStatus(payload.status);
               }
             }
             break;
+
+          // ====================================================
+          // turn:start — 回合制切换当前玩家
+          // ====================================================
           case 'turn:start': g.setTurn(payload.currentPlayerId); break;
+
+          // ====================================================
+          // game:end — 游戏结束
+          // ====================================================
           case 'game:end': g.endGame(payload); break;
+
+          // ====================================================
+          // player:left — 有玩家离开房间
+          // ====================================================
+          case 'player:left':
+            if (payload.userId) {
+              const leftUserId = String(payload.userId);
+              showToast('对手已离开房间', 'info');
+              useGameStore.setState((state) => ({
+                players: state.players.filter((p) => p.id !== leftUserId),  // 从列表移除
+              }));
+            }
+            break;
+
+          // ====================================================
+          // room:closed — 房间被关闭（最后一人退出时）
+          // ====================================================
+          case 'room:closed':
+            g.reset();                              // 重置游戏状态
+            useGameStore.setState({ roomClosed: true });  // 标记房间已关闭（触发页面跳转）
+            showToast('房间已关闭', 'info');
+            break;
         }
-      } catch (err) { console.error('[WS] parse error:', err); }
+      } catch (err) { console.error('[WS] 消息解析失败:', err); }
     };
 
+    // ---- 连接出错 ----
     ws.onerror = (err) => {
-      console.error('[WS] connection error:', err);
+      console.error('[WS] 连接异常:', err);
     };
 
+    // ---- 连接关闭 ----
     ws.onclose = (event) => {
-      console.log('[WS] closed:', event.code, event.reason || 'no reason');
+      console.log('[WS] 连接已关闭:', event.code, event.reason || '无原因');
       set({ connected: false, ws: null });
 
-      // Only auto-reconnect if the disconnect was NOT intentional
+      // 如果是主动断开（disconnect() 调用），不重连
       const { _intentionalDisconnect } = get();
       if (_intentionalDisconnect) return;
 
+      // 非主动断开：3 秒后自动重连
       reconnectTimer = setTimeout(() => {
         const t = localStorage.getItem('auth_token');
         const { roomId: rid, roomCode: rc } = get();
@@ -150,25 +249,34 @@ export const useWSStore = create<WSState>()((set, get) => ({
       }, 3000);
     };
 
+    // 保存 WebSocket 实例到 store
     set({ ws, roomId: roomId ?? null, roomCode: roomCode ?? null });
   },
 
+  // ==========================================================
+  // disconnect — 主动断开 WebSocket 连接
+  // ==========================================================
   disconnect: () => {
     const { ws } = get();
 
-    // Mark disconnect as intentional BEFORE closing the socket
+    // 先标记为主动断开，这样 onclose 不会触发重连
     set({ _intentionalDisconnect: true, roomId: null, roomCode: null });
 
-    // Clear reconnect timer BEFORE closing so onclose handler won't schedule a reconnect
+    // 清除重连定时器（确保 onclose 不会安排新重连）
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
 
+    // 关闭 WebSocket
     if (ws) ws.close();
     set({ ws: null, connected: false });
   },
 
+  // ==========================================================
+  // send — 发送消息到服务端
+  // 格式: { type: "事件名", payload: { ... } }
+  // ==========================================================
   send: (type: string, payload: Record<string, unknown>) => {
     const { ws, connected } = get();
     if (connected && ws?.readyState === WebSocket.OPEN) {

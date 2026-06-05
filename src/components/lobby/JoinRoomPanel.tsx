@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { joinRoom } from '../../api/room';
+import { joinRoom, type CreateRoomResponse } from '../../api/room';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { showToast } from '../shared/Toast';
 
-interface Props { onJoined: (roomId: string) => void; initialCode?: string; }
+interface Props { onJoined: (roomCode: string, roomData?: CreateRoomResponse) => void; initialCode?: string; }
 
 export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
   const [code, setCode] = useState(initialCode);
@@ -17,10 +17,9 @@ export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
     if (!code.trim()) { showToast('请输入房间码', 'error'); return; }
     setLoading(true);
     try {
-      await joinRoom({ room_code: code.trim() });
+      const res = await joinRoom({ room_code: code.trim() });
       showToast('加入房间成功', 'success');
-      console.log(code)
-      onJoined(code.trim());
+      onJoined(code.trim(), res.data);
     } catch { showToast('加入房间失败，请检查房间码', 'error'); }
     finally { setLoading(false); }
   };
