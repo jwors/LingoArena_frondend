@@ -24,19 +24,19 @@ describe('authStore', () => {
   it('should set token and user on successful login', async () => {
     const mockUser = { id: 1, nickname: 'Test' };
     (authApi.login as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: { accessToken: 'tok', refreshToken: 'rtok', user: mockUser },
+      data: { access_token: 'tok', refresh_token: 'rtok', user: mockUser },
     });
     await useAuthStore.getState().login('a@b.com', 'pw');
     const s = useAuthStore.getState();
     expect(s.token).toBe('tok');
-    expect(s.refreshToken).toBe('rtok');
+    expect(s.refresh_token).toBe('rtok');
     expect(s.user).toEqual(mockUser);
     expect(s.isAuthenticated()).toBe(true);
   });
 
   it('should clear on logout', async () => {
     localStorage.setItem('auth_token', 'x');
-    useAuthStore.setState({ token: 'x', refreshToken: 'rx', user: { id: 1, nickname: 'x' } });
+    useAuthStore.setState({ token: 'x', refresh_token: 'rx', user: { id: 1, nickname: 'x' } });
     await useAuthStore.getState().logout();
     expect(useAuthStore.getState().token).toBeNull();
     expect(localStorage.getItem('auth_token')).toBeNull();

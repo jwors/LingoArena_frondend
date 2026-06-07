@@ -4,6 +4,7 @@
 // token 和用户信息存储在 localStorage 中以保持会话
 // ============================================================
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { login as loginApi, register as registerApi, logout as logoutApi } from '../api/auth';
 import type { User } from '../types';
 
@@ -29,7 +30,9 @@ const storedToken = localStorage.getItem('auth_token');
 // ============================================================
 // 创建 Store
 // ============================================================
-export const useAuthStore = create<AuthState>()((set, get) => ({
+export const useAuthStore = create<AuthState>()(
+  devtools(
+    (set, get) => ({
   // ---- 初始状态：从 localStorage 恢复 ----
   token: storedToken,
   refresh_token: localStorage.getItem('auth_refresh_token'),
@@ -78,4 +81,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       : null;
     set({ token, user });
   },
-}));
+    }),
+    { name: 'AuthStore' },
+  ),
+);

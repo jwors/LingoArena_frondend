@@ -3,6 +3,7 @@
 // 管理：房间信息、玩家列表、分数、题目、准备状态、游戏流程
 // ============================================================
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus, GameMode } from '../types';
 import { startGameApi } from '../api/room';
 
@@ -83,7 +84,9 @@ const initialState = {
 // ============================================================
 // 创建 Store
 // ============================================================
-export const useGameStore = create<GameState>()((set, get) => ({
+export const useGameStore = create<GameState>()(
+  devtools(
+    (set, get) => ({
   ...initialState,
 
   // ---- 设置房间（由 room:joined 事件或初始化流程调用）----
@@ -189,4 +192,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     currentTurnPlayerId: null,
     readyPlayerIds: state.hostId ? [state.hostId] : [],  // 保留房主已准备状态
   })),
-}));
+    }),
+    { name: 'GameStore' },
+  ),
+);

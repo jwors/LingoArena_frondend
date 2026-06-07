@@ -69,14 +69,16 @@ export default function GameRoomPage() {
     const rc = roomCodeFromParams || (joinWithCode ? param : null);
     if (rc && param) {
       const curUser = useAuthStore.getState().user;
-      useGameStore.setState({
-        roomCode: rc,
-        roomId: joinWithCode ? undefined : param,       // 游客无 roomId
-        status: 'waiting',
-        hostId: null,                                    // 游客暂设为 null，等 WS 事件填充
-        players: curUser ? [{ id: String(curUser.id), nickname: curUser.nickname || '' }] : [],
-        scores: {},
-      });
+      const selfPlayer = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
+      // joinWithCode=true → 游客通过房间码加入（直接访问链接/刷新页面）
+      // joinWithCode=false → 房主（roomId 在 URL 路径中）
+      useGameStore.getState().setRoom(
+        joinWithCode ? '' : param,          // 游客无 roomId，等 WS 填充
+        selfPlayer ? [selfPlayer] : [],
+        { name: '', label: '', emoji: '📘', color: 'blue' },  // 占位，WS room:joined 会覆盖
+        joinWithCode ? null : String(curUser?.id ?? ''),       // 房主已知，游客未知
+        joinWithCode ? param : rc,           // 游客：roomCode=path param；房主：roomCode=URL query
+      );
     }
   }, []);
 
@@ -175,7 +177,7 @@ export default function GameRoomPage() {
                       {myNickname?.[0] || '?'}
                     </div>
                     {gameEndData.winner === myId && (
-                      <span className="absolute -top-2 -right-2 text-2xl drop-shadow-lg">👑</span>
+                      <span className="absolute -top-2 -right-2 text-2xl drop-shadow-lg">★</span>
                     )}
                   </div>
                   <div>
@@ -195,7 +197,7 @@ export default function GameRoomPage() {
                       {opponent?.nickname?.[0] || '?'}
                     </div>
                     {gameEndData.winner === opponent?.id && (
-                      <span className="absolute -top-2 -right-2 text-2xl drop-shadow-lg">👑</span>
+                      <span className="absolute -top-2 -right-2 text-2xl drop-shadow-lg">★</span>
                     )}
                   </div>
                   <div>
@@ -225,7 +227,7 @@ export default function GameRoomPage() {
                          transition-all duration-200 font-medium
                          active:scale-[0.98]"
             >
-              🔄 返回房间
+              返回房间
             </button>
           </div>
         )}

@@ -4,6 +4,7 @@
 // 后端地址由 VITE_WS_URL 环境变量配置，默认 /ws/room
 // ============================================================
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { useGameStore } from './gameStore';
 import { useAuthStore } from './authStore';
 import { showToast } from '../components/shared/Toast';
@@ -33,7 +34,9 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 // ============================================================
 // 创建 Store
 // ============================================================
-export const useWSStore = create<WSState>()((set, get) => ({
+export const useWSStore = create<WSState>()(
+  devtools(
+    (set, get) => ({
   ws: null,
   connected: false,
   _intentionalDisconnect: false,
@@ -86,11 +89,15 @@ export const useWSStore = create<WSState>()((set, get) => ({
           case 'room:joined':
           case 'room_joined':
             if (payload.players) {
+              console.log('全量数据', payload);
+              alert('全量数据');
               // ---- 全量数据：初始化整个房间状态 ----
-              const hostId = payload.hostId || payload.host?.id || null;
-              const roomCode = payload.roomCode || payload.room?.room_code || null;
+              // 兼容 snake_case（服务端）和 camelCase（前端）
+              const hostId = payload.hostId ?? payload.host_id ?? payload.host?.id ?? null;
+              const roomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? null;
+              const roomId = payload.roomId ?? payload.room_id ?? payload.room?.id ?? null;
               g.setRoom(
-                payload.roomId || payload.room?.id,  // 房间 ID
+                roomId,                               // 房间 ID
                 payload.players,                      // 当前所有玩家
                 payload.wordBook,                     // 词库信息
                 hostId,                               // 房主
@@ -115,12 +122,16 @@ export const useWSStore = create<WSState>()((set, get) => ({
                 const mergedPlayers = state.players.some((p) => p.id === selfId)
                   ? state.players                       // 自己已在列表中，保留不动
                   : [...state.players, selfPlayer];     // 自己不在列表中则添加
+                // 兼容 snake_case（服务端）和 camelCase（前端）
+                const selfRoomId = payload.roomId ?? payload.room_id ?? (ws.roomId ?? ws.roomCode ?? '');
+                const selfHostId = payload.hostId ?? payload.host_id ?? payload.host?.id ?? state.hostId ?? null;
+                const selfRoomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? state.roomCode ?? null;
                 g.setRoom(
-                  payload.roomId || (ws.roomId ?? ws.roomCode ?? ''),
+                  selfRoomId,
                   mergedPlayers,
                   payload.wordBook ?? state.wordBook ?? null,
-                  payload.hostId || payload.host?.id || state.hostId || null,
-                  payload.roomCode || payload.room?.room_code || state.roomCode || null
+                  selfHostId,
+                  selfRoomCode
                 );
               } else {
                 // -- 对手加入了房间：添加到玩家列表 --
@@ -159,9 +170,12 @@ export const useWSStore = create<WSState>()((set, get) => ({
           // payload: { userId, ready: true/false }
           // ====================================================
           case 'player:ready_status':
-            if (payload.userId) {
-              const ready = payload.ready !== false;  // 默认 true（兼容缺少 ready 字段的情况）
-              g.setPlayerReadyState(String(payload.userId), ready);
+            {
+              const userId = payload.userId ?? payload.user_id;
+              if (userId) {
+                const ready = payload.ready !== false;
+                g.setPlayerReadyState(String(userId), ready);
+              }
             }
             break;
 
@@ -178,16 +192,19 @@ export const useWSStore = create<WSState>()((set, get) => ({
           // { status: 'typing' | 'submitted' | 'connected' }
           // ====================================================
           case 'opponent:status':
-            if (payload.userId) {
-              const userId = String(payload.userId);
-              const currentState = useGameStore.getState();
-              // 新玩家连接时，补充加入 players 列表（服务端未广播 room:joined 时的兜底）
-              if (payload.status === 'connected' && !currentState.players.some((p) => p.id === userId)) {
-                currentState.addPlayer({ id: userId, nickname: `玩家 ${userId}` });
-              }
-              // 更新打字/已提交状态
-              if (payload.status === 'typing' || payload.status === 'submitted') {
-                currentState.setOpponentStatus(payload.status);
+            {
+              const userId = payload.userId ?? payload.user_id;
+              if (userId) {
+                const uid = String(userId);
+                const currentState = useGameStore.getState();
+                // 新玩家连接时，补充加入 players 列表（服务端未广播 room:joined 时的兜底）
+                if (payload.status === 'connected' && !currentState.players.some((p) => p.id === uid)) {
+                  currentState.addPlayer({ id: uid, nickname: `玩家 ${uid}` });
+                }
+                // 更新打字/已提交状态
+                if (payload.status === 'typing' || payload.status === 'submitted') {
+                  currentState.setOpponentStatus(payload.status);
+                }
               }
             }
             break;
@@ -195,7 +212,7 @@ export const useWSStore = create<WSState>()((set, get) => ({
           // ====================================================
           // turn:start — 回合制切换当前玩家
           // ====================================================
-          case 'turn:start': g.setTurn(payload.currentPlayerId); break;
+          case 'turn:start': g.setTurn(payload.currentPlayerId ?? payload.current_player_id); break;
 
           // ====================================================
           // game:end — 游戏结束
@@ -206,12 +223,15 @@ export const useWSStore = create<WSState>()((set, get) => ({
           // player:left — 有玩家离开房间
           // ====================================================
           case 'player:left':
-            if (payload.userId) {
-              const leftUserId = String(payload.userId);
-              showToast('对手已离开房间', 'info');
-              useGameStore.setState((state) => ({
-                players: state.players.filter((p) => p.id !== leftUserId),  // 从列表移除
-              }));
+            {
+              const userId = payload.userId ?? payload.user_id;
+              if (userId) {
+                const leftUserId = String(userId);
+                showToast('对手已离开房间', 'info');
+                useGameStore.setState((state) => ({
+                  players: state.players.filter((p) => p.id !== leftUserId),
+                }));
+              }
             }
             break;
 
@@ -234,7 +254,7 @@ export const useWSStore = create<WSState>()((set, get) => ({
 
     // ---- 连接关闭 ----
     ws.onclose = (event) => {
-      console.log('[WS] 连接已关闭:', event.code, event.reason || '无原因');
+      console.warn('[WS] 连接已关闭:', event.code, event.reason || '无原因');
       set({ connected: false, ws: null });
 
       // 如果是主动断开（disconnect() 调用），不重连
@@ -283,4 +303,7 @@ export const useWSStore = create<WSState>()((set, get) => ({
       ws.send(JSON.stringify({ type, payload }));
     }
   },
-}));
+    }),
+    { name: 'WSStore' },
+  ),
+);

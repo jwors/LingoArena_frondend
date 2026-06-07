@@ -49,7 +49,14 @@ export function WaitingLobby({
       showToast('复制失败，请手动抄录', 'error');
     }
   };
-
+  console.log('roomCode', roomCode);
+  console.log('players', players);
+  console.log('hostId', hostId);
+  console.log('readyPlayerIds', readyPlayerIds);
+  console.log('isHost', isHost);
+  console.log('onReady', onReady);
+  console.log('onStartGame', onStartGame);
+  console.log('minimal', minimal);
   // ---- 分享房间链接（设备原生分享 或 复制链接）----
   const handleShareLink = async () => {
     if (!roomCode) return;

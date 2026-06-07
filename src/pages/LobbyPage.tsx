@@ -11,6 +11,7 @@ import { JoinRoomPanel } from '../components/lobby/JoinRoomPanel';
 import { showToast } from '../components/shared/Toast';
 import { useEffect } from 'react';
 import type { CreateRoomResponse } from '../api/room';
+import { WORD_BOOKS } from '../types';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -35,22 +36,23 @@ export default function LobbyPage() {
 
   // ============================================================
   // handleCreated — 创建房间成功后的回调
-  // 先填充 store，再导航到游戏房间页
+  // 调 setRoom 填充 store（自动将房主标记为已准备），再导航到游戏房间页
   // ============================================================
-  const handleCreated = (id: string, roomCode?: string) => {
+  const handleCreated = (id: string, roomCode?: string, wordBookName?: string) => {
     if (roomCode) {
       const curUser = useAuthStore.getState().user;
-      useGameStore.setState({
+      const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
+      const wordBook = WORD_BOOKS.find((wb) => wb.name === wordBookName)
+        ?? { name: wordBookName || 'cet4', label: wordBookName || 'CET-4', emoji: '📘', color: 'blue' };
+      useGameStore.getState().setRoom(
+        id,
+        player ? [player] : [],
+        wordBook,
+        String(curUser?.id ?? ''),
         roomCode,
-        roomId: id,
-        status: 'waiting',
-        hostId: String(curUser?.id ?? ''),
-        players: curUser ? [{ id: String(curUser.id), nickname: curUser.nickname || '' }] : [],
-        readyPlayerIds: curUser ? [String(curUser.id)] : [], // 房主默认已准备
-        scores: {},
-      });
+      );
+      navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
     }
-    navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
   };
 
   // ============================================================
@@ -60,18 +62,15 @@ export default function LobbyPage() {
   const handleJoined = (code: string, roomData?: CreateRoomResponse) => {
     if (roomData?.room) {
       const room = roomData.room;
-      // 用 API 返回的完整房间数据初始化 store
-      useGameStore.setState({
-        roomCode: code,
-        roomId: String(room.id),
-        status: 'waiting',
-        hostId: String(room.host.id),               // 从 API 获取房主 ID
-        players: [
-          { id: String(room.host.id), nickname: room.host.nickname },  // 房主信息
-        ],
-        readyPlayerIds: [String(room.host.id)],     // 房主默认已准备
-        scores: {},
-      });
+      const wordBook = WORD_BOOKS.find((wb) => wb.name === room.wordbook_name)
+        ?? { name: room.wordbook_name || '', label: room.wordbook_name || '', emoji: '📘', color: 'blue' };
+      useGameStore.getState().setRoom(
+        String(room.id),
+        [{ id: String(room.host.id), nickname: room.host.nickname }],
+        wordBook,
+        String(room.host.id),
+        code,
+      );
     }
     navigate(`/room/${code}?joinWithCode=true`);
   };
