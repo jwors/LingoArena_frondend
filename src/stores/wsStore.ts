@@ -89,16 +89,19 @@ export const useWSStore = create<WSState>()(
           case 'room:joined':
           case 'room_joined':
             if (payload.players) {
-              console.log('全量数据', payload);
-              alert('全量数据');
               // ---- 全量数据：初始化整个房间状态 ----
+              // 注意：后端返回的 player.id 是 number，统一转为 string 避免类型不匹配
+              const normalizedPlayers = payload.players.map((p: any) => ({
+                ...p,
+                id: String(p.id),
+              }));
               // 兼容 snake_case（服务端）和 camelCase（前端）
               const hostId = payload.hostId ?? payload.host_id ?? payload.host?.id ?? null;
               const roomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? null;
               const roomId = payload.roomId ?? payload.room_id ?? payload.room?.id ?? null;
               g.setRoom(
                 roomId,                               // 房间 ID
-                payload.players,                      // 当前所有玩家
+                normalizedPlayers,                    // 当前所有玩家（ID 已转为 string）
                 payload.wordBook,                     // 词库信息
                 hostId,                               // 房主
                 roomCode                              // 房间码
@@ -119,7 +122,8 @@ export const useWSStore = create<WSState>()(
                   nickname: payload.user.nickname || `Player ${selfId}`,
                 };
                 // 合并：保留已有的 players 列表，确保自己在列表中
-                const mergedPlayers = state.players.some((p) => p.id === selfId)
+                // String(p.id) 兼容后端返回 number ID 的情况
+                const mergedPlayers = state.players.some((p) => String(p.id) === selfId)
                   ? state.players                       // 自己已在列表中，保留不动
                   : [...state.players, selfPlayer];     // 自己不在列表中则添加
                 // 兼容 snake_case（服务端）和 camelCase（前端）
@@ -141,8 +145,8 @@ export const useWSStore = create<WSState>()(
                   id: String(payload.user.id),
                   nickname: payload.user.nickname || `Player ${payload.user.id}`,
                 };
-                // 去重：避免重复添加
-                if (!currentPlayers.some((p) => p.id === newPlayer.id)) {
+                // 去重：避免重复添加（String 兼容后端返回 number ID）
+                if (!currentPlayers.some((p) => String(p.id) === newPlayer.id)) {
                   g.setRoom(
                     currentState.roomId ?? '',
                     [...currentPlayers, newPlayer],  // 追加新玩家
@@ -198,7 +202,7 @@ export const useWSStore = create<WSState>()(
                 const uid = String(userId);
                 const currentState = useGameStore.getState();
                 // 新玩家连接时，补充加入 players 列表（服务端未广播 room:joined 时的兜底）
-                if (payload.status === 'connected' && !currentState.players.some((p) => p.id === uid)) {
+                if (payload.status === 'connected' && !currentState.players.some((p) => String(p.id) === uid)) {
                   currentState.addPlayer({ id: uid, nickname: `玩家 ${uid}` });
                 }
                 // 更新打字/已提交状态

@@ -19,6 +19,10 @@ import { WaitingLobby } from '../components/game/WaitingLobby';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { StatsTable } from '../components/results/StatsTable';
 
+// 模块级 WS 连接标志 — 跨 React 18 StrictMode mount/unmount/remount 生命周期
+// 确保开发模式下只建立一次真实的 WS 连接（跳过 StrictMode 第一次 mount）
+let _wsConnectSettled = false;
+
 export default function GameRoomPage() {
   // ---- 从 URL 获取路由参数 ----
   const { id: param } = useParams<{ id: string }>();
@@ -91,9 +95,26 @@ export default function GameRoomPage() {
 
   // ============================================================
   // WebSocket 连接：页面挂载时连接，卸载时断开并重置状态
+  //
+  // 注意：React 18 StrictMode 在开发模式下会 double-invoke effect
+  // （mount → unmount → remount），导致 WS 重复连接→断开→重连。
+  // 重连时后端可能视为"回连"而不发全量 room:joined（含完整 players），
+  // 因此游客可能拿不到其他玩家的数据。
+  //
+  // 修复：用模块级标志跳过 StrictMode 第一次 mount，
+  //      只在第二次 mount（真正的存活实例）建立 WS 连接。
   // ============================================================
   useEffect(() => {
     if (!token || !param) return;
+
+    // 开发模式下，跳过 StrictMode 第一次 mount 的 WS 连接
+    if (import.meta.env.DEV && !_wsConnectSettled) {
+      _wsConnectSettled = true;
+      return;                      // 第一次 mount：交给 StrictMode 的 remount
+    }
+
+    // 生产模式 或 StrictMode 第二次 mount → 真正建立连接
+    _wsConnectSettled = false;     // 重置，便于未来重新进入时再次跳过
     connect(token, roomIdByParam, roomCodeByParam);
     return () => {
       disconnect();
@@ -117,7 +138,7 @@ export default function GameRoomPage() {
   // ---- 计算当前玩家和对手信息 ----
   const myId = String(user?.id || '');
   const myNickname = user?.nickname || '';
-  const opponent = players.find((p) => p.id !== myId) || players[0] || null;
+  const opponent = players.find((p) => p.id !== myId) ?? null;
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 

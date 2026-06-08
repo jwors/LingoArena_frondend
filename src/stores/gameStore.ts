@@ -100,11 +100,11 @@ export const useGameStore = create<GameState>()(
     readyPlayerIds: hostId ? [String(hostId)] : [],  // 房主默认已准备
   }),
 
-  // ---- 添加玩家（去重）----
+  // ---- 添加玩家（去重，ID 统一转为 string）----
   addPlayer: (player) => set((state) => ({
-    players: state.players.some((p) => p.id === player.id)
+    players: state.players.some((p) => String(p.id) === String(player.id))
       ? state.players               // 已存在则不重复添加
-      : [...state.players, player],
+      : [...state.players, { ...player, id: String(player.id) }],
   })),
 
   // ---- 开始游戏（房主调用 REST API 通知服务端）----

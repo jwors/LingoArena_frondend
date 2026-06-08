@@ -33,7 +33,6 @@ export function GameHeader({
   // 玩家角色标签
   const myRole = hostId === myId ? '房主' : '游客';
   const opponentRole = hostId && opponent ? (hostId === opponent.id ? '房主' : '游客') : null;
-
   return (
     <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-xl p-3 shadow-sm">
       {/* ---- 左侧：我方信息 ---- */}
