@@ -90,14 +90,25 @@ export const useGameStore = create<GameState>()(
   ...initialState,
 
   // ---- 设置房间（由 room:joined 事件或初始化流程调用）----
-  setRoom: (roomId, players, wordBook, hostId, roomCode) => set({
-    roomId,
-    players,
-    wordBook,
-    status: 'waiting',              // 设置房间后进入等待状态
-    hostId: hostId ?? null,
-    roomCode: roomCode ?? null,
-    readyPlayerIds: hostId ? [String(hostId)] : [],  // 房主默认已准备
+  // 注意：setRoom 可能被多次调用（如后续玩家加入时服务端广播全量 room:joined）。
+  // 此时必须保留已有 readyPlayerIds 和 hostId，避免房主准备状态丢失。
+  // 关键判断：如果已有有效的 roomId（非 null 非空），说明房间已真实初始化过，后续是增量更新。
+  // 反之（roomId 为 null 或 ''），则是首次初始化，应从服务端数据计算准备状态。
+  setRoom: (roomId, players, wordBook, hostId, roomCode) => set((state) => {
+    const hasActiveRoom = state.roomId !== null && state.roomId !== '' && state.status !== 'idle';
+    return {
+      roomId: roomId ?? state.roomId,
+      players,
+      wordBook,
+      status: 'waiting',
+      hostId: hostId ?? state.hostId ?? null,
+      roomCode: roomCode ?? state.roomCode ?? null,
+      readyPlayerIds: hasActiveRoom
+        ? state.readyPlayerIds                             // 保留已有准备状态
+        : hostId
+          ? [String(hostId)]                               // 房主默认已准备
+          : [],
+    };
   }),
 
   // ---- 添加玩家（去重，ID 统一转为 string）----
