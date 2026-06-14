@@ -34,7 +34,7 @@ export function GameHeader({
   const myRole = hostId === myId ? '房主' : '游客';
   const opponentRole = hostId && opponent ? (hostId === opponent.id ? '房主' : '游客') : null;
   return (
-    <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-xl p-3 shadow-sm">
+    <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3">
       {/* ---- 左侧：我方信息 ---- */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-sm font-medium">

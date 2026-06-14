@@ -28,7 +28,7 @@ export function AnswerForm({ roomId, gameMode }: Props) {
   // ============================================================
   if (gameMode === 'turn' && currentTurnPlayerId && currentTurnPlayerId !== String(userId)) {
     return (
-      <div className="text-center py-6 bg-white/60 rounded-xl animate-fade-in">
+      <div className="text-center py-6 card">
         <div className="w-6 h-6 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin mx-auto mb-3" />
         <p className="text-gray-500 text-sm">等待对手答题...</p>
       </div>
@@ -48,7 +48,7 @@ export function AnswerForm({ roomId, gameMode }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 animate-slide-up">
+    <form onSubmit={handleSubmit} className="flex gap-2">
       {/* 答案输入框 */}
       <input
         ref={inputRef}
@@ -65,10 +65,9 @@ export function AnswerForm({ roomId, gameMode }: Props) {
       <button
         type="submit"
         disabled={hasSubmitted || !answer.trim()}  // 已提交或空内容时禁用
-        className="px-6 py-2.5 bg-violet-600 text-white rounded-xl
-                   hover:bg-violet-700 transition-all duration-200
-                   disabled:opacity-40 disabled:cursor-not-allowed
-                   font-medium hover:shadow-lg active:scale-[0.98]"
+        className="px-6 py-2.5 bg-violet-600 text-white rounded-lg
+                   hover:bg-violet-700 transition-colors duration-150
+                   disabled:opacity-40 disabled:cursor-not-allowed font-medium"
       >
         {hasSubmitted ? <LoadingSpinner size="sm" /> : '提交'}
       </button>

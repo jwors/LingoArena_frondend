@@ -153,13 +153,7 @@ export default function GameRoomPage() {
 
   return (
     <div className="page-bg">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-violet-100/40 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-sky-100/40 rounded-full blur-3xl" />
-      </div>
-
-      <main className="max-w-xl mx-auto px-4 py-4 space-y-4 relative z-10 animate-fade-in">
+      <main className="max-w-xl mx-auto px-4 py-4 space-y-4">
         {/*
          * GameHeader — 顶栏
          * 显示：玩家昵称、词库、倒计时、对手状态、回合指示
@@ -186,7 +180,7 @@ export default function GameRoomPage() {
             视图 1: 游戏结束（finished）
             ================================================================ */}
         {gameStatus === 'finished' && gameEndData && (
-          <div className="space-y-4 animate-fade-in">
+          <div className="space-y-4">
             {/* 双方积分 + 胜者皇冠 */}
             <div className="card text-center">
               <h3 className="text-sm font-medium text-gray-400 mb-4">游戏结束</h3>
@@ -243,10 +237,7 @@ export default function GameRoomPage() {
             {/* 返回房间按钮 */}
             <button
               onClick={handleBackToWaiting}
-              className="w-full bg-violet-600 text-white py-3 rounded-xl
-                         hover:bg-violet-700 hover:shadow-lg
-                         transition-all duration-200 font-medium
-                         active:scale-[0.98]"
+              className="w-full btn-primary py-3 text-base"
             >
               返回房间
             </button>
@@ -303,7 +294,7 @@ export default function GameRoomPage() {
 
         {/* 游戏进行中但题目尚未加载：显示加载状态 */}
         {gameStatus === 'playing' && !currentQuestion && (
-          <div className="text-center py-12 animate-fade-in">
+          <div className="text-center py-12">
             <LoadingSpinner />
             <p className="text-gray-500 mt-4">等待下一题...</p>
           </div>

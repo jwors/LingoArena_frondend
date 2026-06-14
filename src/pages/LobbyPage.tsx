@@ -12,6 +12,7 @@ import { showToast } from '../components/shared/Toast';
 import { useEffect } from 'react';
 import type { CreateRoomResponse } from '../api/room';
 import { WORD_BOOKS } from '../types';
+import { Logo } from '../components/shared/Logo';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -78,16 +79,8 @@ export default function LobbyPage() {
   return (
     <div className="page-bg">
       {/* ---- 顶部导航栏 ---- */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 animate-slide-down">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-violet-600 to-sky-500 rounded-xl flex items-center justify-center">
-            <span className="text-base">⚔️</span>
-          </div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-sky-500 bg-clip-text text-transparent">
-            LingoArena
-          </h1>
-        </div>
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 sticky top-0 z-50">
+        <Logo size="sm" />
 
         {/* 用户信息 + 退出登录 */}
         <div className="flex items-center gap-3">
@@ -109,15 +102,14 @@ export default function LobbyPage() {
       {/* ---- 主内容区 ---- */}
       <main className="max-w-xl mx-auto px-4 py-8 space-y-6">
         {/* 欢迎语 */}
-        <div className="animate-fade-in">
+        <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            欢迎来到竞技场 👋
+            欢迎来到竞技场
           </h2>
-          <p className="text-gray-500 mt-1 text-sm">创建或加入房间，开始你的单词对战</p>
+          <p className="text-gray-500 mt-1 text-sm">创建或加入房间，开始单词对战</p>
         </div>
 
-        {/* 操作面板：创建房间 + 加入房间 */}
-        <div className="space-y-6 animate-slide-up">
+        <div className="space-y-6">
           <CreateRoomPanel onCreated={handleCreated} />
           <JoinRoomPanel initialCode={roomCodeFromUrl} onJoined={handleJoined} />
         </div>

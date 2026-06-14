@@ -24,15 +24,10 @@ export function CreateRoomPanel({ onCreated }: Props) {
   };
 
   return (
-    <div className="card animate-fade-in">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-sm">
-          <span className="text-lg">🏠</span>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">创建房间</h3>
-          <p className="text-sm text-gray-500">设置词库和模式，邀请好友来战</p>
-        </div>
+    <div className="card">
+      <div className="panel-header">
+        <h3>创建房间</h3>
+        <p>设置词库和模式，邀请好友来战</p>
       </div>
 
       <div className="space-y-4">
@@ -47,20 +42,18 @@ export function CreateRoomPanel({ onCreated }: Props) {
           <label className="block text-sm font-medium text-gray-700 mb-2">游戏模式</label>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" onClick={() => setGameMode('rush')}
-              className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all duration-200 text-sm active:scale-[0.98] ${
+              className={`flex flex-col items-center gap-1.5 p-4 rounded-lg border transition-colors duration-150 text-sm ${
                 gameMode === 'rush'
-                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
-              <span className="text-xl">⚡</span>
               <span className="font-medium">抢答制</span>
               <span className="text-xs text-gray-400">先答对先得分</span>
             </button>
             <button type="button" onClick={() => setGameMode('turn')}
-              className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all duration-200 text-sm active:scale-[0.98] ${
+              className={`flex flex-col items-center gap-1.5 p-4 rounded-lg border transition-colors duration-150 text-sm ${
                 gameMode === 'turn'
-                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
-              <span className="text-xl">🔄</span>
               <span className="font-medium">回合制</span>
               <span className="text-xs text-gray-400">轮流答题</span>
             </button>

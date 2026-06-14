@@ -9,7 +9,7 @@ interface Props {
 
 export function StatsTable({ myNickname, oppNickname, myStats, oppStats }: Props) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+    <div className="card overflow-hidden p-0">
       <div className="px-5 py-3 border-b border-gray-100">
         <h3 className="text-sm font-medium text-gray-500">答题统计</h3>
       </div>

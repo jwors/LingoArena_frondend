@@ -49,14 +49,7 @@ export function WaitingLobby({
       showToast('复制失败，请手动抄录', 'error');
     }
   };
-  console.log('roomCode', roomCode);
-  console.log('players', players);
-  console.log('hostId', hostId);
-  console.log('readyPlayerIds', readyPlayerIds);
-  console.log('isHost', isHost);
-  console.log('onReady', onReady);
-  console.log('onStartGame', onStartGame);
-  console.log('minimal', minimal);
+
   // ---- 分享房间链接（设备原生分享 或 复制链接）----
   const handleShareLink = async () => {
     if (!roomCode) return;
@@ -87,7 +80,7 @@ export function WaitingLobby({
   const onlyHost = players.length <= 1;
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-4">
       {/* ================================================================
           房间码卡片
           ================================================================ */}
@@ -120,10 +113,9 @@ export function WaitingLobby({
           {/* 分享房间链接按钮 */}
           <button
             onClick={handleShareLink}
-            className="mt-4 w-full bg-violet-100 text-violet-700 py-2.5 rounded-xl
-                       hover:bg-violet-200 transition-all duration-200
-                       flex items-center justify-center gap-2
-                       active:scale-[0.98] text-sm font-medium"
+            className="mt-4 w-full border border-violet-200 text-violet-700 py-2.5 rounded-lg
+                       hover:bg-violet-50 transition-colors duration-150
+                       flex items-center justify-center gap-2 text-sm font-medium"
           >
             {copied === 'link' ? (
               <>
@@ -172,7 +164,7 @@ export function WaitingLobby({
                           {player.nickname}
                         </span>
                         {isPlayerHost && (
-                          <span className="text-xs" title="房主">👑</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">房主</span>
                         )}
                         {isMe && (
                           <span className="text-xs text-gray-400">(你)</span>
@@ -183,13 +175,9 @@ export function WaitingLobby({
                   {/* 准备状态标签 */}
                   <div className="flex items-center gap-2">
                     {isReady ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700">
-                        ✅ 已准备
-                      </span>
+                      <span className="badge bg-emerald-50 text-emerald-700">已准备</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-400">
-                        ❌ 未准备
-                      </span>
+                      <span className="badge bg-gray-100 text-gray-400">未准备</span>
                     )}
                   </div>
                 </div>
@@ -211,14 +199,8 @@ export function WaitingLobby({
                 <button
                   onClick={onStartGame}
                   disabled={!guestReady}  // 需等待对手准备好
-                  className="w-full bg-violet-600 text-white py-3 rounded-xl
-                             hover:bg-violet-700 hover:shadow-lg
-                             transition-all duration-200
-                             disabled:opacity-40 disabled:cursor-not-allowed
-                             flex items-center justify-center gap-2
-                             active:scale-[0.98] font-medium text-base"
+                  className="btn-primary py-3 text-base"
                 >
-                  <span>🚀</span>
                   开始游戏
                 </button>
                 {!guestReady && (
@@ -229,21 +211,14 @@ export function WaitingLobby({
               /* -- 游客视图：准备 / 取消准备按钮 -- */
               <button
                 onClick={() => onReady(!readyPlayerIds.includes(myId))}
-                className={`w-full py-3 rounded-xl font-medium text-base
-                           transition-all duration-200
-                           flex items-center justify-center gap-2
-                           active:scale-[0.98]
+                className={`w-full py-3 rounded-lg font-medium text-base transition-colors duration-150
                            ${
                   readyPlayerIds.includes(myId)
-                    ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'     // 已准备：可取消
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg'  // 未准备：可准备
+                    ? 'border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
                 }`}
               >
-                {readyPlayerIds.includes(myId) ? (
-                  <>⏸️ 取消准备</>
-                ) : (
-                  <>⚔️ 准备</>
-                )}
+                {readyPlayerIds.includes(myId) ? '取消准备' : '准备'}
               </button>
             )}
           </div>
