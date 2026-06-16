@@ -5,13 +5,14 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useWSStore } from '../stores/wsStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { CreateRoomPanel } from '../components/lobby/CreateRoomPanel';
 import { JoinRoomPanel } from '../components/lobby/JoinRoomPanel';
 import { showToast } from '../components/shared/Toast';
 import { useEffect } from 'react';
 import type { CreateRoomResponse } from '../api/room';
-import { WORD_BOOKS } from '../types';
+import { WORD_BOOKS, type GameMode } from '../types';
 import { Logo } from '../components/shared/Logo';
 
 export default function LobbyPage() {
@@ -33,6 +34,8 @@ export default function LobbyPage() {
   }, [roomCodeFromUrl]);
 
   const handleLogout = async () => {
+    useWSStore.getState().disconnect();
+    useGameStore.getState().reset();
     await logout();
     navigate('/login', { replace: true });
     showToast('已退出登录', 'info');
@@ -45,7 +48,7 @@ export default function LobbyPage() {
   // handleCreated — 创建房间成功后的回调
   // 调 setRoom 填充 store（自动将房主标记为已准备），再导航到游戏房间页
   // ============================================================
-  const handleCreated = (id: string, roomCode?: string, wordBookName?: string) => {
+  const handleCreated = (id: string, roomCode?: string, wordBookName?: string, mode?: GameMode) => {
     if (roomCode) {
       const curUser = useAuthStore.getState().user;
       const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
@@ -58,6 +61,7 @@ export default function LobbyPage() {
         String(curUser?.id ?? ''),
         roomCode,
       );
+      if (mode) useGameStore.getState().setGameMode(mode);
       navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
     }
   };
@@ -78,6 +82,9 @@ export default function LobbyPage() {
         String(room.host.id),
         code,
       );
+      if (room.game_mode === 'rush' || room.game_mode === 'turn') {
+        useGameStore.getState().setGameMode(room.game_mode as GameMode);
+      }
     }
     navigate(`/room/${code}?joinWithCode=true`);
   };

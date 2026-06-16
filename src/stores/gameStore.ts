@@ -100,7 +100,7 @@ export const useGameStore = create<GameState>()(
       roomId: roomId ?? state.roomId,
       players,
       wordBook,
-      status: 'waiting',
+      status: hasActiveRoom ? state.status : 'waiting',
       hostId: hostId ?? state.hostId ?? null,
       roomCode: roomCode ?? state.roomCode ?? null,
       readyPlayerIds: hasActiveRoom
@@ -150,7 +150,16 @@ export const useGameStore = create<GameState>()(
   setOpponentStatus: (status) => set({ opponentStatus: status }),
 
   // ---- 游戏结束（由 game:end 事件触发）----
-  endGame: (data) => set({ status: 'finished', gameEndData: data }),
+  endGame: (data) => set({
+    status: 'finished',
+    gameEndData: {
+      ...data,
+      winner: String(data.winner),
+      scores: Object.fromEntries(
+        Object.entries(data.scores).map(([id, score]) => [String(id), score]),
+      ),
+    },
+  }),
 
   // ---- 标记已提交答案（防重复提交）----
   submitAnswer: () => set({ hasSubmitted: true }),

@@ -42,6 +42,14 @@ describe('gameStore', () => {
     expect(s.hasSubmitted).toBe(false);
   });
 
+  it('should preserve playing status when setRoom is called again', () => {
+    const wb = { name: 'cet4', label: 'CET-4', emoji: '📘', color: 'blue' };
+    useGameStore.getState().setRoom('r1', [{ id: 'p1', nickname: 'A' }], wb);
+    useGameStore.setState({ status: 'playing' });
+    useGameStore.getState().setRoom('r1', [{ id: 'p1', nickname: 'A' }, { id: 'p2', nickname: 'B' }], wb);
+    expect(useGameStore.getState().status).toBe('playing');
+  });
+
   it('should end game with data', () => {
     const end = { winner: 'p1', scores: { p1: 5, p2: 3 }, stats: { p1: { correct: 5, wrong: 0, avgTime: 2.1 }, p2: { correct: 3, wrong: 2, avgTime: 3.5 } } };
     useGameStore.getState().endGame(end);

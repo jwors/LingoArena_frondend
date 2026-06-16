@@ -90,8 +90,8 @@ export const useWSStore = create<WSState>()(
           case 'room_joined':
             if (payload.players) {
               // ---- 全量数据：初始化整个房间状态 ----
-              // 注意：后端返回的 player.id 是 number，统一转为 string 避免类型不匹配
-              const normalizedPlayers = payload.players.map((p: any) => ({
+              // 后端 player.id 可能是 number，统一转为 string
+              const normalizedPlayers = payload.players.map((p: { id: string | number; nickname?: string; avatar?: string }) => ({
                 ...p,
                 id: String(p.id),
               }));
@@ -100,12 +100,16 @@ export const useWSStore = create<WSState>()(
               const roomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? null;
               const roomId = payload.roomId ?? payload.room_id ?? payload.room?.id ?? null;
               g.setRoom(
-                roomId,                               // 房间 ID
-                normalizedPlayers,                    // 当前所有玩家（ID 已转为 string）
-                payload.wordBook,                     // 词库信息
-                hostId,                               // 房主
-                roomCode                              // 房间码
+                roomId != null ? String(roomId) : '',
+                normalizedPlayers,
+                payload.wordBook,
+                hostId != null ? String(hostId) : null,
+                roomCode
               );
+              {
+                const mode = payload.gameMode ?? payload.game_mode;
+                if (mode === 'rush' || mode === 'turn') g.setGameMode(mode);
+              }
             } else if (payload.user) {
               // ---- 增量数据：单个玩家加入 ----
               const currentUserId = String(useAuthStore.getState().user?.id ?? '');
@@ -122,7 +126,6 @@ export const useWSStore = create<WSState>()(
                   nickname: payload.user.nickname || `Player ${selfId}`,
                 };
                 // 合并：保留已有的 players 列表，确保自己在列表中
-                // String(p.id) 兼容后端返回 number ID 的情况
                 const mergedPlayers = state.players.some((p) => String(p.id) === selfId)
                   ? state.players                       // 自己已在列表中，保留不动
                   : [...state.players, selfPlayer];     // 自己不在列表中则添加
@@ -145,7 +148,7 @@ export const useWSStore = create<WSState>()(
                   id: String(payload.user.id),
                   nickname: payload.user.nickname || `Player ${payload.user.id}`,
                 };
-                // 去重：避免重复添加（String 兼容后端返回 number ID）
+                // 去重：避免重复添加
                 if (!currentPlayers.some((p) => String(p.id) === newPlayer.id)) {
                   g.setRoom(
                     currentState.roomId ?? '',

@@ -57,6 +57,7 @@ export default function GameRoomPage() {
   const hostId = useGameStore((s) => s.hostId);
   const roomCode = useGameStore((s) => s.roomCode);
   const roomClosed = useGameStore((s) => s.roomClosed);
+  const roomId = useGameStore((s) => s.roomId);
   const resetToWaiting = useGameStore((s) => s.resetToWaiting);
   const connect = useWSStore((s) => s.connect);
   const disconnect = useWSStore((s) => s.disconnect);
@@ -142,9 +143,17 @@ export default function GameRoomPage() {
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
+  const effectiveRoomId = roomId ?? (joinWithCode ? undefined : param);
+
   // ---- WebSocket 发送函数 ----
-  const handleReady = (ready: boolean) => send('player:ready', { roomId: param!, ready });
-  const handleStartGame = () => send('game:start', { roomId: param! });
+  const handleReady = (ready: boolean) => {
+    if (!effectiveRoomId) return;
+    send('player:ready', { roomId: effectiveRoomId, ready });
+  };
+  const handleStartGame = () => {
+    if (!effectiveRoomId) return;
+    send('game:start', { roomId: effectiveRoomId });
+  };
 
   // 游戏结束 → 返回等待区
   const handleBackToWaiting = useCallback(() => {
@@ -288,7 +297,7 @@ export default function GameRoomPage() {
             {/* 答题结果反馈：对/错 + 正确答案 */}
             <ResultFeedback result={result} />
             {/* 答案输入框 */}
-            <AnswerForm roomId={param!} gameMode={gameMode} />
+            <AnswerForm roomId={effectiveRoomId ?? ''} gameMode={gameMode} />
           </>
         )}
 

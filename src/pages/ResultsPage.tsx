@@ -24,7 +24,7 @@ export default function ResultsPage() {
 
   if (!gameEndData) return null;
 
-  const myId = user?.id || '';
+  const myId = String(user?.id ?? '');
   const opponent = players.find((p) => p.id !== myId) ?? { id: 'opponent', nickname: '对手' };
   const isWinner = gameEndData.winner === myId;
   const myScore = gameEndData.scores[myId] ?? 0;
