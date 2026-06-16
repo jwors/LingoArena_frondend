@@ -61,16 +61,16 @@ export const useAuthStore = create<AuthState>()(
     set({ token: data.access_token, refresh_token: data.refresh_token, user: data.user });
   },
 
-  // ---- 登出：调 API 使 refresh_token 失效 → 清除本地存储 ----
+  // ---- 登出：先同步清除本地会话，再异步通知服务端 ----
   logout: async () => {
     const refreshTok = get().refresh_token;
-    if (refreshTok) {
-      try { await logoutApi({ refresh_token: refreshTok }); } catch { /* 忽略网络错误 */ }
-    }
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_refresh_token');
     localStorage.removeItem('user');
     set({ token: null, refresh_token: null, user: null });
+    if (refreshTok) {
+      try { await logoutApi({ refresh_token: refreshTok }); } catch { /* 忽略网络错误 */ }
+    }
   },
 
   // ---- 初始化：从 localStorage 重新读取（适用于页面刷新后恢复）----

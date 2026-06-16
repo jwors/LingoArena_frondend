@@ -32,6 +32,12 @@ export default function LobbyPage() {
     }
   }, [roomCodeFromUrl]);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+    showToast('已退出登录', 'info');
+  };
+
   // 未登录则跳转
   if (!token) { navigate('/login', { replace: true }); return null; }
 
@@ -92,7 +98,7 @@ export default function LobbyPage() {
               <span className="text-sm text-gray-700">{user.nickname}</span>
             </div>
           )}
-          <button onClick={() => { logout(); navigate('/login'); showToast('已退出登录', 'info'); }}
+          <button onClick={handleLogout}
             className="text-sm text-gray-500 hover:text-gray-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100">
             退出
           </button>

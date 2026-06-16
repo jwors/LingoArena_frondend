@@ -14,11 +14,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    if (isAuthenticated()) navigate('/lobby', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (token) navigate('/lobby', { replace: true });
+  }, [token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
