@@ -17,6 +17,7 @@ import { AnswerForm } from '../components/game/AnswerForm';
 import { ResultFeedback } from '../components/game/ResultFeedback';
 import { WaitingLobby } from '../components/game/WaitingLobby';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
+import { showToast } from '../components/shared/Toast';
 import { StatsTable } from '../components/results/StatsTable';
 
 // 模块级 WS 连接标志 — 跨 React 18 StrictMode mount/unmount/remount 生命周期
@@ -59,6 +60,7 @@ export default function GameRoomPage() {
   const roomClosed = useGameStore((s) => s.roomClosed);
   const roomId = useGameStore((s) => s.roomId);
   const resetToWaiting = useGameStore((s) => s.resetToWaiting);
+  const startGame = useGameStore((s) => s.startGame);
   const connect = useWSStore((s) => s.connect);
   const disconnect = useWSStore((s) => s.disconnect);
   const send = useWSStore((s) => s.send);
@@ -150,9 +152,21 @@ export default function GameRoomPage() {
     if (!effectiveRoomId) return;
     send('player:ready', { roomId: effectiveRoomId, ready });
   };
-  const handleStartGame = () => {
-    if (!effectiveRoomId) return;
-    send('game:start', { roomId: effectiveRoomId });
+  const handleStartGame = async () => {
+    const id = roomId ?? (joinWithCode ? undefined : param);
+    if (!id) {
+      showToast('房间信息未就绪，请稍候', 'error');
+      return;
+    }
+    if (!roomId) {
+      useGameStore.setState({ roomId: id });
+    }
+    try {
+      await startGame();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '开始游戏失败';
+      showToast(msg, 'error');
+    }
   };
 
   // 游戏结束 → 返回等待区

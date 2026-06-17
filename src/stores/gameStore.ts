@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus, GameMode } from '../types';
-import { startGameApi } from '../api/room';
+import { startGameApi, getApiErrorMessage } from '../api/room';
 
 // ============================================================
 // Store 接口定义
@@ -118,14 +118,22 @@ export const useGameStore = create<GameState>()(
       : [...state.players, { ...player, id: String(player.id) }],
   })),
 
-  // ---- 开始游戏（房主调用 REST API 通知服务端）----
+  // ---- 开始游戏（房主调用 REST API，服务端再通过 WS 广播 game:start）----
   startGame: async () => {
     const { roomId, players } = get();
-    if (!roomId) return;             // 无房间 ID 则跳过
-    // 初始化所有玩家分数为 0
+    if (!roomId) throw new Error('roomId is required');
     const scores: Record<string, number> = {};
     for (const p of players) scores[p.id] = 0;
-    await startGameApi(Number(roomId));  // 调 REST API 通知服务端开始
+    try {
+      const room = await startGameApi(Number(roomId));
+      if (room?.status && room.status !== 'PLAYING') {
+        if (!room.guest) throw new Error('需要至少两名玩家才能开始游戏');
+        if (!room.wordbookId) throw new Error('未选择词库，请重新创建房间');
+        throw new Error('开始游戏失败，请确认双方已准备');
+      }
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, err instanceof Error ? err.message : '开始游戏失败'));
+    }
     set({ status: 'playing', scores, hasSubmitted: false });
   },
 

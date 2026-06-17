@@ -12,6 +12,7 @@ import { JoinRoomPanel } from '../components/lobby/JoinRoomPanel';
 import { showToast } from '../components/shared/Toast';
 import { useEffect } from 'react';
 import type { CreateRoomResponse } from '../api/room';
+import { wordBookFromRoom } from '../api/room';
 import { WORD_BOOKS, type GameMode } from '../types';
 import { Logo } from '../components/shared/Logo';
 
@@ -40,7 +41,6 @@ export default function LobbyPage() {
     navigate('/login', { replace: true });
     showToast('已退出登录', 'info');
   };
-
   // 未登录则跳转
   if (!token) { navigate('/login', { replace: true }); return null; }
 
@@ -48,22 +48,20 @@ export default function LobbyPage() {
   // handleCreated — 创建房间成功后的回调
   // 调 setRoom 填充 store（自动将房主标记为已准备），再导航到游戏房间页
   // ============================================================
-  const handleCreated = (id: string, roomCode?: string, wordBookName?: string, mode?: GameMode) => {
-    if (roomCode) {
-      const curUser = useAuthStore.getState().user;
-      const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
-      const wordBook = WORD_BOOKS.find((wb) => wb.name === wordBookName)
-        ?? { name: wordBookName || 'cet4', label: wordBookName || 'CET-4', emoji: '📘', color: 'blue' };
-      useGameStore.getState().setRoom(
-        id,
-        player ? [player] : [],
-        wordBook,
-        String(curUser?.id ?? ''),
-        roomCode,
-      );
-      if (mode) useGameStore.getState().setGameMode(mode);
-      navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
-    }
+  const handleCreated = (id: string, roomCode: string, wordBookName: string, mode: GameMode) => {
+    const curUser = useAuthStore.getState().user;
+    const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
+    const wordBook = WORD_BOOKS.find((wb) => wb.name === wordBookName)
+      ?? { name: wordBookName, label: wordBookName, emoji: '📘', color: 'blue' };
+    useGameStore.getState().setRoom(
+      id,
+      player ? [player] : [],
+      wordBook,
+      String(curUser?.id ?? ''),
+      roomCode,
+    );
+    useGameStore.getState().setGameMode(mode);
+    navigate(`/room/${id}?roomCode=${roomCode}`);
   };
 
   // ============================================================
@@ -73,18 +71,15 @@ export default function LobbyPage() {
   const handleJoined = (code: string, roomData?: CreateRoomResponse) => {
     if (roomData?.room) {
       const room = roomData.room;
-      const wordBook = WORD_BOOKS.find((wb) => wb.name === room.wordbook_name)
-        ?? { name: room.wordbook_name || '', label: room.wordbook_name || '', emoji: '📘', color: 'blue' };
+      const wordBook = wordBookFromRoom(room);
       useGameStore.getState().setRoom(
         String(room.id),
         [{ id: String(room.host.id), nickname: room.host.nickname }],
         wordBook,
         String(room.host.id),
-        code,
+        room.roomCode || code,
       );
-      if (room.game_mode === 'rush' || room.game_mode === 'turn') {
-        useGameStore.getState().setGameMode(room.game_mode as GameMode);
-      }
+      useGameStore.getState().setGameMode(room.gameMode);
     }
     navigate(`/room/${code}?joinWithCode=true`);
   };

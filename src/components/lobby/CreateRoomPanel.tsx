@@ -1,26 +1,66 @@
-import { useState } from 'react';
-import { createRoom } from '../../api/room';
+import { useEffect, useState } from 'react';
+import {
+  createRoom,
+  getApiErrorMessage,
+  listWordbooks,
+  resolveWordbookId,
+  type BackendWordbook,
+} from '../../api/room';
 import { WordBookSelector } from './WordBookSelector';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { showToast } from '../shared/Toast';
 import type { GameMode } from '../../types';
 
-interface Props { onCreated: (roomId: string, roomCode?: string, wordBookName?: string, gameMode?: GameMode) => void; }
+interface Props {
+  onCreated: (roomId: string, roomCode: string, wordBookKey: string, gameMode: GameMode) => void;
+}
 
 export function CreateRoomPanel({ onCreated }: Props) {
   const [selectedBook, setSelectedBook] = useState('cet4');
   const [roomName, setRoomName] = useState('');
   const [gameMode, setGameMode] = useState<GameMode>('rush');
   const [loading, setLoading] = useState(false);
+  const [wordbooks, setWordbooks] = useState<BackendWordbook[]>([]);
+  const [wordbooksLoading, setWordbooksLoading] = useState(true);
+
+  useEffect(() => {
+    setWordbooksLoading(true);
+    listWordbooks()
+      .then((list) => {
+        setWordbooks(list);
+        if (list.length === 0) showToast('暂无可用词库', 'error');
+      })
+      .catch(() => showToast('词库列表加载失败', 'error'))
+      .finally(() => setWordbooksLoading(false));
+  }, []);
 
   const handleCreate = async () => {
+    const wordbookId = resolveWordbookId(wordbooks, selectedBook);
+    if (!wordbookId) {
+      showToast('请先选择有效词库', 'error');
+      return;
+    }
     setLoading(true);
     try {
-      const { data: { room } } = await createRoom({ wordBook: selectedBook, name: roomName || undefined, mode: gameMode });
+      const { data: { room } } = await createRoom({
+        wordbookId,
+        gameMode,
+        totalRounds: 10,
+      });
+      void roomName; // 后端 CreateRoomRequest 暂无 name 字段
+
+      if (!room.wordbookId) {
+        showToast('房间创建异常：词库未绑定', 'error');
+        return;
+      }
+
       showToast('房间创建成功', 'success');
-      onCreated(String(room.id), room.room_code, selectedBook, gameMode);
-    } catch { showToast('创建房间失败', 'error'); }
-    finally { setLoading(false); }
+      onCreated(String(room.id), room.roomCode, selectedBook, room.gameMode);
+    } catch (err) {
+      showToast(getApiErrorMessage(err, '创建房间失败'), 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,13 +71,11 @@ export function CreateRoomPanel({ onCreated }: Props) {
       </div>
 
       <div className="space-y-4">
-        {/* Word book */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">选择词库</label>
           <WordBookSelector selected={selectedBook} onChange={(wb) => setSelectedBook(wb.name)} />
         </div>
 
-        {/* Game mode */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">游戏模式</label>
           <div className="grid grid-cols-2 gap-3">
@@ -60,14 +98,17 @@ export function CreateRoomPanel({ onCreated }: Props) {
           </div>
         </div>
 
-        {/* Room name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">房间名称（可选）</label>
           <input type="text" value={roomName} onChange={(e) => setRoomName(e.target.value)}
             className="input-field" placeholder="留空使用默认名称" />
         </div>
 
-        <button onClick={handleCreate} disabled={loading} className="btn-primary">
+        <button
+          onClick={handleCreate}
+          disabled={loading || wordbooksLoading || wordbooks.length === 0}
+          className="btn-primary"
+        >
           {loading ? <LoadingSpinner size="sm" /> : '创建房间'}
         </button>
       </div>

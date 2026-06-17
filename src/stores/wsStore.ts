@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useGameStore } from './gameStore';
 import { useAuthStore } from './authStore';
+import { fromBackendGameMode } from '../api/room';
 import { showToast } from '../components/shared/Toast';
 
 // WebSocket 服务端地址（从环境变量读取，默认代理到后端 /ws/room）
@@ -108,7 +109,7 @@ export const useWSStore = create<WSState>()(
               );
               {
                 const mode = payload.gameMode ?? payload.game_mode;
-                if (mode === 'rush' || mode === 'turn') g.setGameMode(mode);
+                if (typeof mode === 'string') g.setGameMode(fromBackendGameMode(mode));
               }
             } else if (payload.user) {
               // ---- 增量数据：单个玩家加入 ----
