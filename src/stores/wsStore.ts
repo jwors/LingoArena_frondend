@@ -30,11 +30,19 @@ interface WSState {
   send: (event: string, payload: Record<string, unknown>) => boolean;
 }
 
-// 出站 payload 兼容 snake_case（与 REST 一致）
+// 出站消息与入站一致：{ type, payload }；payload 字段用 snake_case
+function toNumericId(value: unknown): unknown {
+  if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value);
+  return value;
+}
+
 function buildOutboundPayload(payload: Record<string, unknown>): Record<string, unknown> {
-  const data = { ...payload };
-  if (payload.roomId !== undefined) data.room_id = payload.roomId;
-  if (payload.userId !== undefined) data.user_id = payload.userId;
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === 'roomId') data.room_id = toNumericId(value);
+    else if (key === 'userId') data.user_id = toNumericId(value);
+    else data[key] = value;
+  }
   return data;
 }
 
@@ -324,13 +332,12 @@ export const useWSStore = create<WSState>()(
   },
 
   // ==========================================================
-  // send — 发送消息到服务端（兼容 type/payload 与 event/data 两种格式）
+  // send — 发送消息到服务端（格式与入站一致：{ type, payload }）
   // ==========================================================
   send: (type: string, payload: Record<string, unknown>) => {
     const { ws, connected } = get();
     if (!connected || ws?.readyState !== WebSocket.OPEN) return false;
-    const data = buildOutboundPayload(payload);
-    ws.send(JSON.stringify({ type, event: type, payload: data, data }));
+    ws.send(JSON.stringify({ type, payload: buildOutboundPayload(payload) }));
     return true;
   },
     }),
