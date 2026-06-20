@@ -50,6 +50,13 @@ describe('gameStore', () => {
     expect(useGameStore.getState().status).toBe('playing');
   });
 
+  it('should preserve roomId when setRoom receives empty string', () => {
+    const wb = { name: 'cet4', label: 'CET-4', emoji: '📘', color: 'blue' };
+    useGameStore.getState().setRoom('92', [{ id: 'p1', nickname: 'A' }], wb);
+    useGameStore.getState().setRoom('', [{ id: 'p1', nickname: 'A' }, { id: 'p2', nickname: 'B' }], wb);
+    expect(useGameStore.getState().roomId).toBe('92');
+  });
+
   it('should end game with data', () => {
     const end = { winner: 'p1', scores: { p1: 5, p2: 3 }, stats: { p1: { correct: 5, wrong: 0, avgTime: 2.1 }, p2: { correct: 3, wrong: 2, avgTime: 3.5 } } };
     useGameStore.getState().endGame(end);

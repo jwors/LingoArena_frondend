@@ -70,11 +70,9 @@ export function WaitingLobby({
     }
   };
 
-  // ---- 判断是否有非房主玩家已准备（房主用于启用"开始游戏"按钮）----
-  // 逻辑：遍历玩家，如果该玩家不是房主且已准备 → guestReady = true
-  const guestReady = players.some(
-    (p) => (!hostId || p.id !== hostId) ? readyPlayerIds.includes(p.id) : false
-  );
+  // ---- 是否所有玩家都已准备（以 WS player:ready_status 为准）----
+  const allReady = players.length >= 2
+    && players.every((p) => readyPlayerIds.includes(p.id));
 
   // ---- 是否只有房主在房间 ----
   const onlyHost = players.length <= 1;
@@ -198,13 +196,13 @@ export function WaitingLobby({
               <div className="space-y-3">
                 <button
                   onClick={onStartGame}
-                  disabled={!guestReady}  // 需等待对手准备好
+                  disabled={!allReady}
                   className="btn-primary py-3 text-base"
                 >
                   开始游戏
                 </button>
-                {!guestReady && (
-                  <p className="text-center text-sm text-gray-400">等待玩家准备...</p>
+                {!allReady && (
+                  <p className="text-center text-sm text-gray-400">等待所有玩家准备...</p>
                 )}
               </div>
             ) : (

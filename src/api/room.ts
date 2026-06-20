@@ -2,18 +2,12 @@
 // 房间 REST API（字段与后端 OpenAPI 对齐，JSON 使用 snake_case）
 // ============================================================
 import apiClient from './client';
-import type { GameMode, User, WordBook } from '../types';
-import { WORD_BOOKS } from '../types';
+import type { GameMode, User } from '../types';
+
+export type { BackendWordbook } from './wordbook';
+export { listWordbooks, toDisplayWordBook, wordBookFromRoom } from './wordbook';
 
 export type BackendGameMode = 'RACE' | 'TURN_BASED';
-
-export interface BackendWordbook {
-  id: number;
-  name: string;
-  description?: string;
-  level?: string;
-  isActive?: boolean;
-}
 
 export interface NormalizedRoom {
   id: number;
@@ -30,16 +24,6 @@ export interface NormalizedRoom {
 export interface CreateRoomResponse {
   room: NormalizedRoom;
 }
-
-/** 前端词库 key → 后端 Wordbook.level */
-export const WORD_BOOK_LEVEL_MAP: Record<string, string> = {
-  cet4: 'CET4',
-  cet6: 'CET6',
-  kaoyan: 'KAOYAN',
-  ielts: 'IELTS',
-  gre: 'TOEFL',
-  random: 'CET4',
-};
 
 function pick<T>(obj: Record<string, unknown>, ...keys: string[]): T | undefined {
   for (const key of keys) {
@@ -68,16 +52,6 @@ export function fromBackendGameMode(mode: string): GameMode {
   return 'rush';
 }
 
-function normalizeWordbook(raw: Record<string, unknown>): BackendWordbook {
-  return {
-    id: Number(pick(raw, 'id')),
-    name: String(pick(raw, 'name') ?? ''),
-    description: pick(raw, 'description'),
-    level: pick(raw, 'level'),
-    isActive: pick(raw, 'isActive', 'is_active'),
-  };
-}
-
 export function normalizeRoom(raw: Record<string, unknown>): NormalizedRoom {
   const host = pick<Record<string, unknown>>(raw, 'host') ?? {};
   const guestRaw = pick<Record<string, unknown> | null>(raw, 'guest');
@@ -101,64 +75,11 @@ export function normalizeRoom(raw: Record<string, unknown>): NormalizedRoom {
   };
 }
 
-export function wordBookFromRoom(room: NormalizedRoom, fallbackKey?: string): WordBook {
-  const byName = WORD_BOOKS.find(
-    (wb) => wb.name === room.wordbookName || wb.label === room.wordbookName,
-  );
-  if (byName) return byName;
-  const byKey = WORD_BOOKS.find((wb) => wb.name === fallbackKey);
-  if (byKey) return byKey;
-  return {
-    name: room.wordbookName || fallbackKey || 'cet4',
-    label: room.wordbookName || 'CET-4',
-    emoji: '📘',
-    color: 'blue',
-  };
-}
-
-export function resolveWordbookId(
-  wordbooks: BackendWordbook[],
-  selectedKey: string,
-): number | null {
-  if (wordbooks.length === 0) return null;
-
-  const level = WORD_BOOK_LEVEL_MAP[selectedKey];
-  if (level) {
-    const byLevel = wordbooks.find((wb) => wb.level === level);
-    if (byLevel) return byLevel.id;
-  }
-
-  const key = selectedKey.toLowerCase();
-  const byName = wordbooks.find((wb) => wb.name.toLowerCase().includes(key));
-  if (byName) return byName.id;
-
-  const active = wordbooks.find((wb) => wb.isActive !== false);
-  return active?.id ?? wordbooks[0]?.id ?? null;
-}
-
 function unwrapRoom(data: unknown): NormalizedRoom {
   const envelope = data as Record<string, unknown>;
   const raw = (envelope.room ?? envelope) as Record<string, unknown>;
   return normalizeRoom(raw);
 }
-
-export const listWordbooks = async (): Promise<BackendWordbook[]> => {
-  const { data } = await apiClient.get<unknown>('/wordbooks');
-
-  if (Array.isArray(data)) {
-    return data.map((item) => normalizeWordbook(item as Record<string, unknown>));
-  }
-
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    const list = [obj.wordbooks, obj.data, ...Object.values(obj)].find(Array.isArray);
-    if (Array.isArray(list)) {
-      return list.map((item) => normalizeWordbook(item as Record<string, unknown>));
-    }
-  }
-
-  return [];
-};
 
 export const createRoom = async (data: {
   wordbookId: number;

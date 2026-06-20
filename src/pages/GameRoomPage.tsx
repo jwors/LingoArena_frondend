@@ -5,7 +5,7 @@
 //   playing  → 答题界面（题目卡 + 输入框 + 反馈）
 //   finished → 结果展示（比分 + 统计 + 返回按钮）
 // ============================================================
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -18,6 +18,7 @@ import { ResultFeedback } from '../components/game/ResultFeedback';
 import { WaitingLobby } from '../components/game/WaitingLobby';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { showToast } from '../components/shared/Toast';
+import { resolveRoomId } from '../utils/roomId';
 import { StatsTable } from '../components/results/StatsTable';
 
 // 模块级 WS 连接标志 — 跨 React 18 StrictMode mount/unmount/remount 生命周期
@@ -65,8 +66,23 @@ export default function GameRoomPage() {
   const disconnect = useWSStore((s) => s.disconnect);
   const send = useWSStore((s) => s.send);
 
+  const wsRoomId = useWSStore((s) => s.roomId);
+  const wsConnected = useWSStore((s) => s.connected);
+  const hostReadySentRef = useRef(false);
+  const myId = String(user?.id ?? '');
+
+  const effectiveRoomId = resolveRoomId({
+    storeRoomId: roomId,
+    urlParam: param,
+    joinWithCode,
+    wsRoomId,
+  });
+
+  const handleBackToWaiting = useCallback(() => {
+    resetToWaiting();
+  }, [resetToWaiting]);
+
   // ============================================================
-  // 状态兜底 useEffect
   // 刷新页面或从大厅创建/加入房间后，从 URL 恢复 store 状态
   // ============================================================
   useEffect(() => {
@@ -125,6 +141,23 @@ export default function GameRoomPage() {
     };
   }, [token, param]);
 
+  // 房主进入等待区后自动向后端发送准备（后端 /start 要求双方都在 DB 中 ready）
+  useEffect(() => {
+    hostReadySentRef.current = false;
+  }, [effectiveRoomId, gameStatus]);
+
+  useEffect(() => {
+    if (gameStatus !== 'waiting' || hostId !== myId || !wsConnected || !effectiveRoomId) return;
+    if (readyPlayerIds.includes(myId)) {
+      hostReadySentRef.current = true;
+      return;
+    }
+    if (hostReadySentRef.current) return;
+    hostReadySentRef.current = true;
+    const ok = send('player:ready', { ready: true, roomId: effectiveRoomId });
+    if (!ok) hostReadySentRef.current = false;
+  }, [gameStatus, hostId, myId, wsConnected, effectiveRoomId, readyPlayerIds, send]);
+
   // ============================================================
   // 房间被关闭 → 跳转回大厅
   // ============================================================
@@ -138,27 +171,26 @@ export default function GameRoomPage() {
   if (!isAuthenticated()) return null;
   if (!param) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
-  // ---- 计算当前玩家和对手信息 ----
-  const myId = String(user?.id || '');
   const myNickname = user?.nickname || '';
   const opponent = players.find((p) => p.id !== myId) ?? null;
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
-  const effectiveRoomId = roomId ?? (joinWithCode ? undefined : param);
-
-  // ---- WebSocket 发送函数 ----
   const handleReady = (ready: boolean) => {
-    if (!effectiveRoomId) return;
-    send('player:ready', { roomId: effectiveRoomId, ready });
+    if (!effectiveRoomId) {
+      showToast('房间信息未就绪', 'error');
+      return;
+    }
+    const ok = send('player:ready', { roomId: effectiveRoomId, ready });
+    if (!ok) showToast('连接未就绪，无法发送准备状态', 'error');
   };
   const handleStartGame = async () => {
-    const id = roomId ?? (joinWithCode ? undefined : param);
+    const id = effectiveRoomId;
     if (!id) {
       showToast('房间信息未就绪，请稍候', 'error');
       return;
     }
-    if (!roomId) {
+    if (!roomId || roomId.trim() === '') {
       useGameStore.setState({ roomId: id });
     }
     try {
@@ -168,11 +200,6 @@ export default function GameRoomPage() {
       showToast(msg, 'error');
     }
   };
-
-  // 游戏结束 → 返回等待区
-  const handleBackToWaiting = useCallback(() => {
-    resetToWaiting();
-  }, [resetToWaiting]);
 
   return (
     <div className="page-bg">

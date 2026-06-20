@@ -1,49 +1,53 @@
-import { useEffect, useState } from 'react';
-import {
-  createRoom,
-  getApiErrorMessage,
-  listWordbooks,
-  resolveWordbookId,
-  type BackendWordbook,
-} from '../../api/room';
+import { useEffect, useMemo, useState } from 'react';
+import { createRoom, getApiErrorMessage } from '../../api/room';
+import { listWordbooks, toDisplayWordBook } from '../../api/wordbook';
 import { WordBookSelector } from './WordBookSelector';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { showToast } from '../shared/Toast';
-import type { GameMode } from '../../types';
+import type { GameMode, WordBook } from '../../types';
 
 interface Props {
-  onCreated: (roomId: string, roomCode: string, wordBookKey: string, gameMode: GameMode) => void;
+  onCreated: (roomId: string, roomCode: string, wordBook: WordBook, gameMode: GameMode) => void;
 }
 
 export function CreateRoomPanel({ onCreated }: Props) {
-  const [selectedBook, setSelectedBook] = useState('cet4');
+  const [selectedWordbookId, setSelectedWordbookId] = useState<number | null>(null);
   const [roomName, setRoomName] = useState('');
   const [gameMode, setGameMode] = useState<GameMode>('rush');
   const [loading, setLoading] = useState(false);
-  const [wordbooks, setWordbooks] = useState<BackendWordbook[]>([]);
   const [wordbooksLoading, setWordbooksLoading] = useState(true);
+  const [displayWordbooks, setDisplayWordbooks] = useState<WordBook[]>([]);
 
   useEffect(() => {
     setWordbooksLoading(true);
     listWordbooks()
       .then((list) => {
-        setWordbooks(list);
-        if (list.length === 0) showToast('暂无可用词库', 'error');
+        const display = list.map(toDisplayWordBook);
+        setDisplayWordbooks(display);
+        if (display.length === 0) {
+          showToast('暂无可用词库', 'error');
+        } else {
+          setSelectedWordbookId((prev) => prev ?? display[0].id ?? null);
+        }
       })
       .catch(() => showToast('词库列表加载失败', 'error'))
       .finally(() => setWordbooksLoading(false));
   }, []);
 
+  const selectedWordbook = useMemo(
+    () => displayWordbooks.find((wb) => wb.id === selectedWordbookId) ?? null,
+    [displayWordbooks, selectedWordbookId],
+  );
+
   const handleCreate = async () => {
-    const wordbookId = resolveWordbookId(wordbooks, selectedBook);
-    if (!wordbookId) {
-      showToast('请先选择有效词库', 'error');
+    if (!selectedWordbookId) {
+      showToast('请先选择词库', 'error');
       return;
     }
     setLoading(true);
     try {
       const { data: { room } } = await createRoom({
-        wordbookId,
+        wordbookId: selectedWordbookId,
         gameMode,
         totalRounds: 10,
       });
@@ -55,7 +59,11 @@ export function CreateRoomPanel({ onCreated }: Props) {
       }
 
       showToast('房间创建成功', 'success');
-      onCreated(String(room.id), room.roomCode, selectedBook, room.gameMode);
+      const wordBook = selectedWordbook ?? toDisplayWordBook({
+        id: room.wordbookId,
+        name: room.wordbookName ?? '',
+      });
+      onCreated(String(room.id), room.roomCode, wordBook, room.gameMode);
     } catch (err) {
       showToast(getApiErrorMessage(err, '创建房间失败'), 'error');
     } finally {
@@ -73,7 +81,12 @@ export function CreateRoomPanel({ onCreated }: Props) {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">选择词库</label>
-          <WordBookSelector selected={selectedBook} onChange={(wb) => setSelectedBook(wb.name)} />
+          <WordBookSelector
+            wordbooks={displayWordbooks}
+            selectedId={selectedWordbookId}
+            loading={wordbooksLoading}
+            onChange={(wb) => setSelectedWordbookId(wb.id ?? null)}
+          />
         </div>
 
         <div>
@@ -106,7 +119,7 @@ export function CreateRoomPanel({ onCreated }: Props) {
 
         <button
           onClick={handleCreate}
-          disabled={loading || wordbooksLoading || wordbooks.length === 0}
+          disabled={loading || wordbooksLoading || !selectedWordbookId}
           className="btn-primary"
         >
           {loading ? <LoadingSpinner size="sm" /> : '创建房间'}
