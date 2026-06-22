@@ -19,10 +19,12 @@ export interface Player {
 // 词库信息
 // ============================================================
 export interface WordBook {
-  name: string;   // 词库标识（如 'cet4', 'gre'）
-  label: string;  // 显示标签（如 'CET-4', 'GRE'）
+  id?: number;    // 后端词库 ID（来自 /api/wordbooks）
+  name: string;   // 词库名称
+  label: string;  // 展示标签
   emoji: string;  // 词库图标 emoji
   color: string;  // 主题色
+  level?: string; // 后端 level（CET4 / CET6 等）
 }
 
 // ============================================================
@@ -78,18 +80,6 @@ export interface TurnInfo {
   currentPlayerId: string;  // 当前回合的玩家 ID
   round: number;            // 当前回合数
 }
-
-// ============================================================
-// 词库预设
-// ============================================================
-export const WORD_BOOKS: WordBook[] = [
-  { name: 'cet4',   label: 'CET-4',     emoji: '📘', color: 'blue' },
-  { name: 'cet6',   label: 'CET-6',     emoji: '📕', color: 'red' },
-  { name: 'kaoyan', label: '考研英语',   emoji: '📗', color: 'green' },
-  { name: 'gre',    label: 'GRE',        emoji: '📙', color: 'orange' },
-  { name: 'ielts',  label: '雅思',       emoji: '🔵', color: 'blue' },
-  { name: 'random', label: '随机混合',   emoji: '🎲', color: 'purple' },
-];
 
 // ============================================================
 // 游戏常量

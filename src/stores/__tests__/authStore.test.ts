@@ -34,11 +34,16 @@ describe('authStore', () => {
     expect(s.isAuthenticated()).toBe(true);
   });
 
-  it('should clear on logout', async () => {
+  it('should clear on logout immediately before API resolves', async () => {
     localStorage.setItem('auth_token', 'x');
     useAuthStore.setState({ token: 'x', refresh_token: 'rx', user: { id: 1, nickname: 'x' } });
-    await useAuthStore.getState().logout();
+    let resolveLogout: () => void;
+    const logoutPromise = new Promise<void>((resolve) => { resolveLogout = resolve; });
+    (authApi.logout as ReturnType<typeof vi.fn>).mockReturnValueOnce(logoutPromise);
+    const pending = useAuthStore.getState().logout();
     expect(useAuthStore.getState().token).toBeNull();
     expect(localStorage.getItem('auth_token')).toBeNull();
+    resolveLogout!();
+    await pending;
   });
 });

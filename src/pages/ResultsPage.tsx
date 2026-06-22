@@ -24,7 +24,7 @@ export default function ResultsPage() {
 
   if (!gameEndData) return null;
 
-  const myId = user?.id || '';
+  const myId = String(user?.id ?? '');
   const opponent = players.find((p) => p.id !== myId) ?? { id: 'opponent', nickname: '对手' };
   const isWinner = gameEndData.winner === myId;
   const myScore = gameEndData.scores[myId] ?? 0;
@@ -33,23 +33,11 @@ export default function ResultsPage() {
 
   return (
     <div className="page-bg">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -right-32 w-96 h-96 bg-violet-100/40 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -left-32 w-96 h-96 bg-sky-100/40 rounded-full blur-3xl" />
-      </div>
-
-      <main className="max-w-xl mx-auto px-4 py-6 space-y-4 relative z-10">
+      <main className="max-w-xl mx-auto px-4 py-6 space-y-4">
         <WinnerBanner isWinner={isWinner} nickname={myName} />
-        <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <ScoreSummary myScore={myScore} opponentScore={oppScore} myNickname={myName} oppNickname={opponent.nickname} />
-        </div>
-        <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <StatsTable myNickname={myName} oppNickname={opponent.nickname} myStats={gameEndData.stats[myId]} oppStats={gameEndData.stats[opponent.id]} />
-        </div>
-        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <PlayAgainButton />
-        </div>
+        <ScoreSummary myScore={myScore} opponentScore={oppScore} myNickname={myName} oppNickname={opponent.nickname} />
+        <StatsTable myNickname={myName} oppNickname={opponent.nickname} myStats={gameEndData.stats[myId]} oppStats={gameEndData.stats[opponent.id]} />
+        <PlayAgainButton />
       </main>
     </div>
   );

@@ -129,7 +129,7 @@ PvP 要点：
 ## 开发命令
 
 ```bash
-npm run dev          # 启动开发服务器（代理到后端 http://192.168.1.9:8080）
+npm run dev          # 启动开发服务器（代理到后端 http://192.168.1.8:8080）
 npm run build        # tsc 类型检查 + vite 构建
 npm test             # 运行所有测试
 npm run test:watch   # 监听模式
@@ -144,3 +144,4 @@ npx tsc --noEmit     # 仅类型检查
 4. **保持 Store 接口兼容** — 修改 gameStore 时注意 wsStore 中事件分发的调用点
 5. **类型安全** — 避免 `any`，使用 `unknown` 并在使用时收窄类型
 6. **PvP 场景注意竞态** — WebSocket 事件可能乱序到达，状态更新需考虑幂等性
+7. **回答问题要给出根源和解决方案** — 当用户询问问题时，必须分析问题的根本原因（root cause），然后提供具体的解决方案，而不是仅给出表面解释

@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Player, DisplayQuestion, AnswerResult, GameStatus, WordBook, GameEndData, OpponentStatus, GameMode } from '../types';
-import { startGameApi } from '../api/room';
+import { startGameApi, getApiErrorMessage } from '../api/room';
 
 // ============================================================
 // Store 接口定义
@@ -95,19 +95,19 @@ export const useGameStore = create<GameState>()(
   // 关键判断：如果已有有效的 roomId（非 null 非空），说明房间已真实初始化过，后续是增量更新。
   // 反之（roomId 为 null 或 ''），则是首次初始化，应从服务端数据计算准备状态。
   setRoom: (roomId, players, wordBook, hostId, roomCode) => set((state) => {
-    const hasActiveRoom = state.roomId !== null && state.roomId !== '' && state.status !== 'idle';
+    const incoming = roomId != null && String(roomId).trim() !== '' ? String(roomId) : null;
+    const resolvedRoomId = incoming ?? state.roomId;
+    const hasActiveRoom = resolvedRoomId !== null && resolvedRoomId !== '' && state.status !== 'idle';
     return {
-      roomId: roomId ?? state.roomId,
+      roomId: resolvedRoomId,
       players,
       wordBook,
-      status: 'waiting',
+      status: hasActiveRoom ? state.status : 'waiting',
       hostId: hostId ?? state.hostId ?? null,
       roomCode: roomCode ?? state.roomCode ?? null,
       readyPlayerIds: hasActiveRoom
-        ? state.readyPlayerIds                             // 保留已有准备状态
-        : hostId
-          ? [String(hostId)]                               // 房主默认已准备
-          : [],
+        ? state.readyPlayerIds                             // 保留已有准备状态（来自 WS）
+        : [],                                             // 初始不假定任何人已准备
     };
   }),
 
@@ -118,14 +118,22 @@ export const useGameStore = create<GameState>()(
       : [...state.players, { ...player, id: String(player.id) }],
   })),
 
-  // ---- 开始游戏（房主调用 REST API 通知服务端）----
+  // ---- 开始游戏（房主调用 REST API，服务端再通过 WS 广播 game:start）----
   startGame: async () => {
     const { roomId, players } = get();
-    if (!roomId) return;             // 无房间 ID 则跳过
-    // 初始化所有玩家分数为 0
+    if (!roomId) throw new Error('roomId is required');
     const scores: Record<string, number> = {};
     for (const p of players) scores[p.id] = 0;
-    await startGameApi(Number(roomId));  // 调 REST API 通知服务端开始
+    try {
+      const room = await startGameApi(Number(roomId));
+      if (room?.status && room.status !== 'PLAYING') {
+        if (!room.guest) throw new Error('需要至少两名玩家才能开始游戏');
+        if (!room.wordbookId) throw new Error('未选择词库，请重新创建房间');
+        throw new Error('开始游戏失败，请确认双方已准备');
+      }
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, err instanceof Error ? err.message : '开始游戏失败'));
+    }
     set({ status: 'playing', scores, hasSubmitted: false });
   },
 
@@ -150,7 +158,16 @@ export const useGameStore = create<GameState>()(
   setOpponentStatus: (status) => set({ opponentStatus: status }),
 
   // ---- 游戏结束（由 game:end 事件触发）----
-  endGame: (data) => set({ status: 'finished', gameEndData: data }),
+  endGame: (data) => set({
+    status: 'finished',
+    gameEndData: {
+      ...data,
+      winner: String(data.winner),
+      scores: Object.fromEntries(
+        Object.entries(data.scores).map(([id, score]) => [String(id), score]),
+      ),
+    },
+  }),
 
   // ---- 标记已提交答案（防重复提交）----
   submitAnswer: () => set({ hasSubmitted: true }),
@@ -190,7 +207,7 @@ export const useGameStore = create<GameState>()(
   reset: () => set(initialState),
 
   // ---- 游戏结束后重置回等待状态（保留房间和房主信息）----
-  resetToWaiting: () => set((state) => ({
+  resetToWaiting: () => set(() => ({
     status: 'waiting',
     scores: {},
     currentQuestion: null,
@@ -201,7 +218,7 @@ export const useGameStore = create<GameState>()(
     hasSubmitted: false,
     gameEndData: null,
     currentTurnPlayerId: null,
-    readyPlayerIds: state.hostId ? [state.hostId] : [],  // 保留房主已准备状态
+    readyPlayerIds: [],  // 回到等待区后需重新通过 WS 发送准备
   })),
     }),
     { name: 'GameStore' },

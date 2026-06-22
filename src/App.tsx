@@ -13,8 +13,8 @@ function AuthRedirectListener() {
   const logout = useAuthStore((s) => s.logout);
 
   useEffect(() => {
-    const handler = () => {
-      logout();
+    const handler = async () => {
+      await logout();
       navigate('/login', { replace: true });
     };
     window.addEventListener('auth:unauthorized', handler);

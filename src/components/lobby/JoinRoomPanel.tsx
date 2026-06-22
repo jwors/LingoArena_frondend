@@ -17,7 +17,7 @@ export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
     if (!code.trim()) { showToast('请输入房间码', 'error'); return; }
     setLoading(true);
     try {
-      const res = await joinRoom({ room_code: code.trim() });
+      const res = await joinRoom({ roomCode: code.trim() });
       showToast('加入房间成功', 'success');
       onJoined(code.trim(), res.data);
     } catch { showToast('加入房间失败，请检查房间码', 'error'); }
@@ -25,15 +25,10 @@ export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
   };
 
   return (
-    <div className="card animate-fade-in">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-          <span className="text-lg">🚪</span>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">加入房间</h3>
-          <p className="text-sm text-gray-500">输入好友提供的房间码</p>
-        </div>
+    <div className="card">
+      <div className="panel-header">
+        <h3>加入房间</h3>
+        <p>输入好友提供的房间码</p>
       </div>
 
       <div className="space-y-4">
@@ -42,13 +37,7 @@ export function JoinRoomPanel({ onJoined, initialCode = '' }: Props) {
           <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={6}
             className="input-field text-center text-lg tracking-widest font-mono" placeholder="ABC123" />
         </div>
-        <button onClick={handleJoin} disabled={loading || code.length < 4}
-          className="w-full bg-emerald-600 text-white py-2.5 rounded-xl
-                     hover:bg-emerald-700 hover:shadow-lg
-                     transition-all duration-200
-                     disabled:opacity-40 disabled:cursor-not-allowed
-                     flex items-center justify-center
-                     active:scale-[0.98]">
+        <button onClick={handleJoin} disabled={loading || code.length < 4} className="btn-primary">
           {loading ? <LoadingSpinner size="sm" /> : '加入房间'}
         </button>
       </div>

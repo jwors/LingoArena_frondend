@@ -12,7 +12,7 @@ interface Props {
 
 export function ScoreBoard({ myScore, opponentScore }: Props) {
   return (
-    <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm">
+    <div className="card flex items-center justify-between p-4">
       {/* 我方分数（紫色） */}
       <div className="text-center flex-1">
         <p className="text-xs text-gray-400 mb-1 font-medium">你</p>

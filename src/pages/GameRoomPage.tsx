@@ -5,7 +5,7 @@
 //   playing  → 答题界面（题目卡 + 输入框 + 反馈）
 //   finished → 结果展示（比分 + 统计 + 返回按钮）
 // ============================================================
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -17,6 +17,8 @@ import { AnswerForm } from '../components/game/AnswerForm';
 import { ResultFeedback } from '../components/game/ResultFeedback';
 import { WaitingLobby } from '../components/game/WaitingLobby';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
+import { showToast } from '../components/shared/Toast';
+import { resolveRoomId } from '../utils/roomId';
 import { StatsTable } from '../components/results/StatsTable';
 
 // 模块级 WS 连接标志 — 跨 React 18 StrictMode mount/unmount/remount 生命周期
@@ -57,13 +59,30 @@ export default function GameRoomPage() {
   const hostId = useGameStore((s) => s.hostId);
   const roomCode = useGameStore((s) => s.roomCode);
   const roomClosed = useGameStore((s) => s.roomClosed);
+  const roomId = useGameStore((s) => s.roomId);
   const resetToWaiting = useGameStore((s) => s.resetToWaiting);
+  const startGame = useGameStore((s) => s.startGame);
   const connect = useWSStore((s) => s.connect);
   const disconnect = useWSStore((s) => s.disconnect);
   const send = useWSStore((s) => s.send);
 
+  const wsRoomId = useWSStore((s) => s.roomId);
+  const wsConnected = useWSStore((s) => s.connected);
+  const hostReadySentRef = useRef(false);
+  const myId = String(user?.id ?? '');
+
+  const effectiveRoomId = resolveRoomId({
+    storeRoomId: roomId,
+    urlParam: param,
+    joinWithCode,
+    wsRoomId,
+  });
+
+  const handleBackToWaiting = useCallback(() => {
+    resetToWaiting();
+  }, [resetToWaiting]);
+
   // ============================================================
-  // 状态兜底 useEffect
   // 刷新页面或从大厅创建/加入房间后，从 URL 恢复 store 状态
   // ============================================================
   useEffect(() => {
@@ -122,6 +141,23 @@ export default function GameRoomPage() {
     };
   }, [token, param]);
 
+  // 房主进入等待区后自动向后端发送准备（后端 /start 要求双方都在 DB 中 ready）
+  useEffect(() => {
+    hostReadySentRef.current = false;
+  }, [effectiveRoomId, gameStatus]);
+
+  useEffect(() => {
+    if (gameStatus !== 'waiting' || hostId !== myId || !wsConnected || !effectiveRoomId) return;
+    if (readyPlayerIds.includes(myId)) {
+      hostReadySentRef.current = true;
+      return;
+    }
+    if (hostReadySentRef.current) return;
+    hostReadySentRef.current = true;
+    const ok = send('player:ready', { ready: true, roomId: effectiveRoomId });
+    if (!ok) hostReadySentRef.current = false;
+  }, [gameStatus, hostId, myId, wsConnected, effectiveRoomId, readyPlayerIds, send]);
+
   // ============================================================
   // 房间被关闭 → 跳转回大厅
   // ============================================================
@@ -135,31 +171,39 @@ export default function GameRoomPage() {
   if (!isAuthenticated()) return null;
   if (!param) return <div className="page-bg p-8 text-center">无效的房间</div>;
 
-  // ---- 计算当前玩家和对手信息 ----
-  const myId = String(user?.id || '');
   const myNickname = user?.nickname || '';
   const opponent = players.find((p) => p.id !== myId) ?? null;
   const myScore = scores[myId] || 0;
   const oppScore = opponent ? (scores[opponent.id] || 0) : 0;
 
-  // ---- WebSocket 发送函数 ----
-  const handleReady = (ready: boolean) => send('player:ready', { roomId: param!, ready });
-  const handleStartGame = () => send('game:start', { roomId: param! });
-
-  // 游戏结束 → 返回等待区
-  const handleBackToWaiting = useCallback(() => {
-    resetToWaiting();
-  }, [resetToWaiting]);
+  const handleReady = (ready: boolean) => {
+    if (!effectiveRoomId) {
+      showToast('房间信息未就绪', 'error');
+      return;
+    }
+    const ok = send('player:ready', { roomId: effectiveRoomId, ready });
+    if (!ok) showToast('连接未就绪，无法发送准备状态', 'error');
+  };
+  const handleStartGame = async () => {
+    const id = effectiveRoomId;
+    if (!id) {
+      showToast('房间信息未就绪，请稍候', 'error');
+      return;
+    }
+    if (!roomId || roomId.trim() === '') {
+      useGameStore.setState({ roomId: id });
+    }
+    try {
+      await startGame();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '开始游戏失败';
+      showToast(msg, 'error');
+    }
+  };
 
   return (
     <div className="page-bg">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-violet-100/40 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-sky-100/40 rounded-full blur-3xl" />
-      </div>
-
-      <main className="max-w-xl mx-auto px-4 py-4 space-y-4 relative z-10 animate-fade-in">
+      <main className="max-w-xl mx-auto px-4 py-4 space-y-4">
         {/*
          * GameHeader — 顶栏
          * 显示：玩家昵称、词库、倒计时、对手状态、回合指示
@@ -186,7 +230,7 @@ export default function GameRoomPage() {
             视图 1: 游戏结束（finished）
             ================================================================ */}
         {gameStatus === 'finished' && gameEndData && (
-          <div className="space-y-4 animate-fade-in">
+          <div className="space-y-4">
             {/* 双方积分 + 胜者皇冠 */}
             <div className="card text-center">
               <h3 className="text-sm font-medium text-gray-400 mb-4">游戏结束</h3>
@@ -243,10 +287,7 @@ export default function GameRoomPage() {
             {/* 返回房间按钮 */}
             <button
               onClick={handleBackToWaiting}
-              className="w-full bg-violet-600 text-white py-3 rounded-xl
-                         hover:bg-violet-700 hover:shadow-lg
-                         transition-all duration-200 font-medium
-                         active:scale-[0.98]"
+              className="w-full btn-primary py-3 text-base"
             >
               返回房间
             </button>
@@ -297,13 +338,13 @@ export default function GameRoomPage() {
             {/* 答题结果反馈：对/错 + 正确答案 */}
             <ResultFeedback result={result} />
             {/* 答案输入框 */}
-            <AnswerForm roomId={param!} gameMode={gameMode} />
+            <AnswerForm roomId={effectiveRoomId ?? ''} gameMode={gameMode} />
           </>
         )}
 
         {/* 游戏进行中但题目尚未加载：显示加载状态 */}
         {gameStatus === 'playing' && !currentQuestion && (
-          <div className="text-center py-12 animate-fade-in">
+          <div className="text-center py-12">
             <LoadingSpinner />
             <p className="text-gray-500 mt-4">等待下一题...</p>
           </div>

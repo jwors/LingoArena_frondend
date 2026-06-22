@@ -5,13 +5,16 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useWSStore } from '../stores/wsStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { CreateRoomPanel } from '../components/lobby/CreateRoomPanel';
 import { JoinRoomPanel } from '../components/lobby/JoinRoomPanel';
 import { showToast } from '../components/shared/Toast';
 import { useEffect } from 'react';
 import type { CreateRoomResponse } from '../api/room';
-import { WORD_BOOKS } from '../types';
+import { wordBookFromRoom } from '../api/room';
+import type { GameMode, WordBook } from '../types';
+import { Logo } from '../components/shared/Logo';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -31,6 +34,13 @@ export default function LobbyPage() {
     }
   }, [roomCodeFromUrl]);
 
+  const handleLogout = async () => {
+    useWSStore.getState().disconnect();
+    useGameStore.getState().reset();
+    await logout();
+    navigate('/login', { replace: true });
+    showToast('已退出登录', 'info');
+  };
   // 未登录则跳转
   if (!token) { navigate('/login', { replace: true }); return null; }
 
@@ -38,21 +48,18 @@ export default function LobbyPage() {
   // handleCreated — 创建房间成功后的回调
   // 调 setRoom 填充 store（自动将房主标记为已准备），再导航到游戏房间页
   // ============================================================
-  const handleCreated = (id: string, roomCode?: string, wordBookName?: string) => {
-    if (roomCode) {
-      const curUser = useAuthStore.getState().user;
-      const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
-      const wordBook = WORD_BOOKS.find((wb) => wb.name === wordBookName)
-        ?? { name: wordBookName || 'cet4', label: wordBookName || 'CET-4', emoji: '📘', color: 'blue' };
-      useGameStore.getState().setRoom(
-        id,
-        player ? [player] : [],
-        wordBook,
-        String(curUser?.id ?? ''),
-        roomCode,
-      );
-      navigate(`/room/${id}?roomCode=${roomCode ?? ''}`);
-    }
+  const handleCreated = (id: string, roomCode: string, wordBook: WordBook, mode: GameMode) => {
+    const curUser = useAuthStore.getState().user;
+    const player = curUser ? { id: String(curUser.id), nickname: curUser.nickname || '' } : null;
+    useGameStore.getState().setRoom(
+      id,
+      player ? [player] : [],
+      wordBook,
+      String(curUser?.id ?? ''),
+      roomCode,
+    );
+    useGameStore.getState().setGameMode(mode);
+    navigate(`/room/${id}?roomCode=${roomCode}`);
   };
 
   // ============================================================
@@ -62,15 +69,15 @@ export default function LobbyPage() {
   const handleJoined = (code: string, roomData?: CreateRoomResponse) => {
     if (roomData?.room) {
       const room = roomData.room;
-      const wordBook = WORD_BOOKS.find((wb) => wb.name === room.wordbook_name)
-        ?? { name: room.wordbook_name || '', label: room.wordbook_name || '', emoji: '📘', color: 'blue' };
+      const wordBook = wordBookFromRoom(room);
       useGameStore.getState().setRoom(
         String(room.id),
         [{ id: String(room.host.id), nickname: room.host.nickname }],
         wordBook,
         String(room.host.id),
-        code,
+        room.roomCode || code,
       );
+      useGameStore.getState().setGameMode(room.gameMode);
     }
     navigate(`/room/${code}?joinWithCode=true`);
   };
@@ -78,16 +85,8 @@ export default function LobbyPage() {
   return (
     <div className="page-bg">
       {/* ---- 顶部导航栏 ---- */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 animate-slide-down">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-violet-600 to-sky-500 rounded-xl flex items-center justify-center">
-            <span className="text-base">⚔️</span>
-          </div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-sky-500 bg-clip-text text-transparent">
-            LingoArena
-          </h1>
-        </div>
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 sticky top-0 z-50">
+        <Logo size="sm" />
 
         {/* 用户信息 + 退出登录 */}
         <div className="flex items-center gap-3">
@@ -99,7 +98,7 @@ export default function LobbyPage() {
               <span className="text-sm text-gray-700">{user.nickname}</span>
             </div>
           )}
-          <button onClick={() => { logout(); navigate('/login'); showToast('已退出登录', 'info'); }}
+          <button onClick={handleLogout}
             className="text-sm text-gray-500 hover:text-gray-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100">
             退出
           </button>
@@ -109,15 +108,14 @@ export default function LobbyPage() {
       {/* ---- 主内容区 ---- */}
       <main className="max-w-xl mx-auto px-4 py-8 space-y-6">
         {/* 欢迎语 */}
-        <div className="animate-fade-in">
+        <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            欢迎来到竞技场 👋
+            欢迎来到竞技场
           </h2>
-          <p className="text-gray-500 mt-1 text-sm">创建或加入房间，开始你的单词对战</p>
+          <p className="text-gray-500 mt-1 text-sm">创建或加入房间，开始单词对战</p>
         </div>
 
-        {/* 操作面板：创建房间 + 加入房间 */}
-        <div className="space-y-6 animate-slide-up">
+        <div className="space-y-6">
           <CreateRoomPanel onCreated={handleCreated} />
           <JoinRoomPanel initialCode={roomCodeFromUrl} onJoined={handleJoined} />
         </div>

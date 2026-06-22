@@ -7,7 +7,7 @@ interface Props {
 
 export function ScoreSummary({ myScore, opponentScore, myNickname, oppNickname }: Props) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
+    <div className="card p-5">
       <h3 className="text-sm font-medium text-gray-400 mb-4 text-center">最终比分</h3>
       <div className="flex items-center justify-center gap-6">
         <div className="text-center flex-1">

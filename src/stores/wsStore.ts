@@ -7,6 +7,8 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useGameStore } from './gameStore';
 import { useAuthStore } from './authStore';
+import { fromBackendGameMode } from '../api/room';
+import { pickRoomIdFromPayload } from '../utils/roomId';
 import { showToast } from '../components/shared/Toast';
 
 // WebSocket 服务端地址（从环境变量读取，默认代理到后端 /ws/room）
@@ -25,10 +27,25 @@ interface WSState {
   // Actions
   connect: (token: string, roomId?: string, roomCode?: string, onOpen?: () => void) => void;
   disconnect: () => void;
-  send: (event: string, data: Record<string, unknown>) => void;
+  send: (event: string, payload: Record<string, unknown>) => boolean;
 }
 
-// 全局重连定时器（模块级，不会被 React 重新渲染重置）
+// 出站消息与入站一致：{ type, payload }；payload 字段用 snake_case
+function toNumericId(value: unknown): unknown {
+  if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value);
+  return value;
+}
+
+function buildOutboundPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === 'roomId') data.room_id = toNumericId(value);
+    else if (key === 'userId') data.user_id = toNumericId(value);
+    else data[key] = value;
+  }
+  return data;
+}
+
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ============================================================
@@ -90,22 +107,29 @@ export const useWSStore = create<WSState>()(
           case 'room_joined':
             if (payload.players) {
               // ---- 全量数据：初始化整个房间状态 ----
-              // 注意：后端返回的 player.id 是 number，统一转为 string 避免类型不匹配
-              const normalizedPlayers = payload.players.map((p: any) => ({
+              // 后端 player.id 可能是 number，统一转为 string
+              const normalizedPlayers = payload.players.map((p: { id: string | number; nickname?: string; avatar?: string }) => ({
                 ...p,
                 id: String(p.id),
               }));
               // 兼容 snake_case（服务端）和 camelCase（前端）
               const hostId = payload.hostId ?? payload.host_id ?? payload.host?.id ?? null;
               const roomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? null;
-              const roomId = payload.roomId ?? payload.room_id ?? payload.room?.id ?? null;
+              const parsedRoomId = pickRoomIdFromPayload(payload as Record<string, unknown>);
+              const state = useGameStore.getState();
+              const roomIdForSet = parsedRoomId ?? state.roomId ?? '';
+              if (parsedRoomId) set({ roomId: parsedRoomId });
               g.setRoom(
-                roomId,                               // 房间 ID
-                normalizedPlayers,                    // 当前所有玩家（ID 已转为 string）
-                payload.wordBook,                     // 词库信息
-                hostId,                               // 房主
-                roomCode                              // 房间码
+                roomIdForSet,
+                normalizedPlayers,
+                payload.wordBook,
+                hostId != null ? String(hostId) : null,
+                roomCode
               );
+              {
+                const mode = payload.gameMode ?? payload.game_mode;
+                if (typeof mode === 'string') g.setGameMode(fromBackendGameMode(mode));
+              }
             } else if (payload.user) {
               // ---- 增量数据：单个玩家加入 ----
               const currentUserId = String(useAuthStore.getState().user?.id ?? '');
@@ -122,12 +146,14 @@ export const useWSStore = create<WSState>()(
                   nickname: payload.user.nickname || `Player ${selfId}`,
                 };
                 // 合并：保留已有的 players 列表，确保自己在列表中
-                // String(p.id) 兼容后端返回 number ID 的情况
                 const mergedPlayers = state.players.some((p) => String(p.id) === selfId)
                   ? state.players                       // 自己已在列表中，保留不动
                   : [...state.players, selfPlayer];     // 自己不在列表中则添加
                 // 兼容 snake_case（服务端）和 camelCase（前端）
-                const selfRoomId = payload.roomId ?? payload.room_id ?? (ws.roomId ?? ws.roomCode ?? '');
+                const selfRoomId = pickRoomIdFromPayload(payload as Record<string, unknown>)
+                  ?? (state.roomId && state.roomId.trim() !== '' ? state.roomId : null)
+                  ?? ws.roomId
+                  ?? '';
                 const selfHostId = payload.hostId ?? payload.host_id ?? payload.host?.id ?? state.hostId ?? null;
                 const selfRoomCode = payload.roomCode ?? payload.room_code ?? payload.room?.room_code ?? state.roomCode ?? null;
                 g.setRoom(
@@ -145,10 +171,10 @@ export const useWSStore = create<WSState>()(
                   id: String(payload.user.id),
                   nickname: payload.user.nickname || `Player ${payload.user.id}`,
                 };
-                // 去重：避免重复添加（String 兼容后端返回 number ID）
+                // 去重：避免重复添加
                 if (!currentPlayers.some((p) => String(p.id) === newPlayer.id)) {
                   g.setRoom(
-                    currentState.roomId ?? '',
+                    currentState.roomId && currentState.roomId.trim() !== '' ? currentState.roomId : '',
                     [...currentPlayers, newPlayer],  // 追加新玩家
                     currentState.wordBook!,           // 保留原词库
                     currentState.hostId,              // 保留原房主
@@ -187,9 +213,17 @@ export const useWSStore = create<WSState>()(
           // 游戏进行中事件
           // ====================================================
           case 'question:new':    g.setQuestion(payload.chinese, payload.round); break;
-          case 'answer:result':   g.setResult(payload); break;
+          case 'answer:result':
+            g.setResult({
+              correct: payload.correct === true,
+              playerId: String(payload.playerId ?? payload.player_id ?? ''),
+              answer: payload.answer,
+            });
+            break;
           case 'score:update':    g.setScores(payload.scores); break;
-          case 'timer:tick':      g.setTimeLeft(payload.timeLeft); break;
+          case 'timer:tick':
+            g.setTimeLeft(payload.timeLeft ?? payload.time_left ?? 0);
+            break;
 
           // ====================================================
           // opponent:status — 对手输入状态
@@ -298,14 +332,13 @@ export const useWSStore = create<WSState>()(
   },
 
   // ==========================================================
-  // send — 发送消息到服务端
-  // 格式: { type: "事件名", payload: { ... } }
+  // send — 发送消息到服务端（格式与入站一致：{ type, payload }）
   // ==========================================================
   send: (type: string, payload: Record<string, unknown>) => {
     const { ws, connected } = get();
-    if (connected && ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type, payload }));
-    }
+    if (!connected || ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ type, payload: buildOutboundPayload(payload) }));
+    return true;
   },
     }),
     { name: 'WSStore' },

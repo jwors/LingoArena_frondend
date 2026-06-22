@@ -21,9 +21,9 @@ export function ResultFeedback({ result }: Props) {
         : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'           // 错误：红色
     }`}>
       <span className="text-lg mr-1">{result.correct ? '✓' : '✗'}</span>
-      {result.correct ? '正确！' : '错误'}
-      {/* 答错时显示正确答案 */}
-      {result.answer && !result.correct && (
+      {result.correct ? '正确！' : result.answer === 'timeout' ? '答题超时' : '错误'}
+      {/* 答错时显示正确答案（超时除外） */}
+      {result.answer && !result.correct && result.answer !== 'timeout' && (
         <span className="ml-2 text-sm opacity-80">正确答案: {result.answer}</span>
       )}
     </div>
