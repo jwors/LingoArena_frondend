@@ -7,8 +7,8 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      '/api': { target: 'http://192.168.1.9:8080', changeOrigin: true },
-      '/ws': { target: 'ws://192.168.1.9:8080', ws: true },
+      '/api': { target: 'http://192.168.1.8:8080', changeOrigin: true },
+      '/ws': { target: 'ws://192.168.1.8:8080', ws: true },
     },
   },
   test: {
